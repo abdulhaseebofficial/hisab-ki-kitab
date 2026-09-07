@@ -1,18 +1,21 @@
 import { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { FileBarChart, HandCoins, LayoutDashboard, PieChart, Receipt, Settings, Sparkles, Target, Wallet, X } from 'lucide-react';
+import useT from '../../shared/i18n/I18nProvider';
 import { cn } from '../../shared/utils/format';
 
 export const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/expenses', label: 'Expenses', icon: Receipt },
-  { to: '/income', label: 'Income', icon: Wallet },
-  { to: '/goals', label: 'Goals', icon: Target },
-  { to: '/debts', label: 'Udhaar', icon: HandCoins },
-  { to: '/budget', label: 'Budget', icon: PieChart },
-  { to: '/advisor', label: 'AI Advisor', icon: Sparkles },
-  { to: '/reports', label: 'Reports', icon: FileBarChart },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  // `key` is the translation key, not the label: the route stays the same in
+  // both languages and only the word on it changes.
+  { to: '/dashboard', key: 'dashboard', icon: LayoutDashboard },
+  { to: '/expenses', key: 'expenses', icon: Receipt },
+  { to: '/income', key: 'income', icon: Wallet },
+  { to: '/goals', key: 'goals', icon: Target },
+  { to: '/debts', key: 'udhaar', icon: HandCoins },
+  { to: '/budget', key: 'budget', icon: PieChart },
+  { to: '/advisor', key: 'advisor', icon: Sparkles },
+  { to: '/reports', key: 'reports', icon: FileBarChart },
+  { to: '/settings', key: 'settings', icon: Settings },
 ];
 
 /**
@@ -27,9 +30,11 @@ export const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) =>
 );
 
 function NavItems({ onNavigate }) {
+  const { t } = useT();
+
   return (
     <nav className="space-y-1">
-      {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+      {NAV_ITEMS.map(({ to, key, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
@@ -39,9 +44,9 @@ function NavItems({ onNavigate }) {
           {({ isActive }) => (
             <>
               <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-              {label}
+              {t(`nav.${key}`)}
               {/* Announced by screen readers; "active" styling alone says nothing. */}
-              {isActive && <span className="sr-only">(current page)</span>}
+              {isActive && <span className="sr-only">{t('nav.currentPage')}</span>}
             </>
           )}
         </NavLink>
@@ -55,6 +60,7 @@ function NavItems({ onNavigate }) {
  * screen only has to be added to NAV_ITEMS once.
  */
 export default function Sidebar({ open, onClose }) {
+  const { t } = useT();
   /*
    * While the drawer is open the page behind it must not scroll: on a phone,
    * dragging the overlay otherwise moves the page underneath and the student
@@ -96,7 +102,7 @@ export default function Sidebar({ open, onClose }) {
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Close menu"
+                aria-label={t('nav.closeMenu')}
                 className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 <X className="h-5 w-5" />

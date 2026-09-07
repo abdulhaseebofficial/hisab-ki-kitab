@@ -7,25 +7,25 @@ const asyncHandler = require('../../shared/http/asyncHandler');
 
 /** GET /api/debts - filtered, sorted, paginated. */
 const listDebts = asyncHandler(async (req, res) => {
-  const data = await debts.list(req.user._id, req.query);
+  const data = await debts.list(req.user._id, req.user.financeMode, req.query);
   res.json({ success: true, data });
 });
 
 /** GET /api/debts/summary - what is owed, and to whom, in both directions. */
 const getSummary = asyncHandler(async (req, res) => {
-  const data = await debts.summary(req.user._id);
+  const data = await debts.summary(req.user._id, req.user.financeMode);
   res.json({ success: true, data });
 });
 
 /** GET /api/debts/:id - the record and its full payment history. */
 const getDebt = asyncHandler(async (req, res) => {
-  const data = await debts.getById(req.params.id, req.user._id);
+  const data = await debts.getById(req.params.id, req.user.financeMode, req.user._id);
   res.json({ success: true, data });
 });
 
 /** GET /api/debts/:id/payments */
 const listPayments = asyncHandler(async (req, res) => {
-  const payments = await debts.paymentsFor(req.params.id, req.user._id);
+  const payments = await debts.paymentsFor(req.params.id, req.user.financeMode, req.user._id);
   res.json({ success: true, data: { payments } });
 });
 
@@ -47,7 +47,7 @@ const updateDebt = asyncHandler(async (req, res) => {
 
 /** DELETE /api/debts/:id */
 const deleteDebt = asyncHandler(async (req, res) => {
-  const id = await debts.remove(req.params.id, req.user._id);
+  const id = await debts.remove(req.params.id, req.user.financeMode, req.user._id);
   res.json({ success: true, message: 'Record deleted', data: { id } });
 });
 
@@ -67,9 +67,15 @@ const settleDebt = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Settled in full', data: { debt, payment, justSettled: true } });
 });
 
+/** POST /api/debts/:id/cancel - it no longer counts, but it still happened. */
+const cancelDebt = asyncHandler(async (req, res) => {
+  const debt = await debts.cancel(req.params.id, req.user, req.body.reason);
+  res.json({ success: true, message: 'Record cancelled', data: { debt } });
+});
+
 /** DELETE /api/debts/:id/payments/:paymentId - undo a mistyped payment. */
 const deletePayment = asyncHandler(async (req, res) => {
-  const debt = await debts.removePayment(req.params.id, req.params.paymentId, req.user._id);
+  const debt = await debts.removePayment(req.params.id, req.params.paymentId, req.user.financeMode, req.user._id);
   res.json({ success: true, message: 'Payment removed', data: { debt } });
 });
 
@@ -78,6 +84,7 @@ module.exports = {
   getSummary,
   getDebt,
   listPayments,
+  cancelDebt,
   createDebt,
   updateDebt,
   deleteDebt,

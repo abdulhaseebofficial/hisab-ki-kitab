@@ -22,7 +22,7 @@
 const debtsRepo = require('./debts.repository');
 const ApiError = require('../../shared/errors/ApiError');
 const events = require('../../shared/events');
-const { isOwnCategory } = require('../../shared/categories');
+const { isOwnCategory, modeOf } = require('../../shared/categories');
 const { round2 } = require('../../shared/utils/calculations');
 
 /** How far ahead "due soon" looks, for the summary and for reminders. */
@@ -38,6 +38,8 @@ const EDITABLE = [
   'dueDate',
   'category',
   'note',
+  'purpose',
+  'purposeCategory',
 ];
 
 /**
@@ -54,19 +56,19 @@ const assertCategory = (user, category) => {
 
 /* ------------------------------ reading ----------------------------- */
 
-const list = (userId, filters) => debtsRepo.list(userId, filters);
+const list = (userId, financeMode, filters) => debtsRepo.list(userId, financeMode, filters);
 
 /** One debt with its ledger, which is the only way the details screen is useful. */
-const getById = async (id, userId) => {
-  const debt = await debtsRepo.findById(id, userId);
+const getById = async (id, financeMode, userId) => {
+  const debt = await debtsRepo.findById(id, financeMode, userId);
   if (!debt) throw ApiError.notFound('Debt record not found');
 
   const payments = await debtsRepo.payments(id, userId);
   return { debt, payments };
 };
 
-const paymentsFor = async (id, userId) => {
-  const debt = await debtsRepo.findById(id, userId);
+const paymentsFor = async (id, financeMode, userId) => {
+  const debt = await debtsRepo.findById(id, financeMode, userId);
   if (!debt) throw ApiError.notFound('Debt record not found');
   return debtsRepo.payments(id, userId);
 };
@@ -77,6 +79,7 @@ const create = async (user, input) => {
   assertCategory(user, input.category);
 
   return debtsRepo.create(user._id, {
+    financeMode: modeOf(user),
     kind: input.kind,
     personName: String(input.personName).trim(),
     personContact: input.personContact,
@@ -85,6 +88,11 @@ const create = async (user, input) => {
     dueDate: input.dueDate ? new Date(input.dueDate) : null,
     category: input.category || null,
     note: input.note,
+    // What the money was for, in the person's own words and as one of the
+    // known reasons. Both optional: a debt is worth recording even when
+    // nobody wants to explain it.
+    purpose: input.purpose || null,
+    purposeCategory: input.purposeCategory || null,
   });
 };
 
@@ -94,7 +102,7 @@ const create = async (user, input) => {
  * the ledger is the thing that is true.
  */
 const update = async (id, user, body) => {
-  const existing = await debtsRepo.findById(id, user._id);
+  const existing = await debtsRepo.findById(id, modeOf(user), user._id);
   if (!existing) throw ApiError.notFound('Debt record not found');
 
   if (body.category !== undefined) assertCategory(user, body.category);
@@ -114,7 +122,7 @@ const update = async (id, user, body) => {
   if (patch.transactionDate !== undefined) patch.transactionDate = new Date(patch.transactionDate);
   if (patch.dueDate !== undefined) patch.dueDate = patch.dueDate ? new Date(patch.dueDate) : null;
 
-  const debt = await debtsRepo.update(id, user._id, patch);
+  const debt = await debtsRepo.update(id, modeOf(user), user._id, patch);
   if (!debt) throw ApiError.notFound('Debt record not found');
   return debt;
 };
@@ -126,8 +134,8 @@ const update = async (id, user, body) => {
  * is worth keeping - but a student may still delete one they entered by
  * mistake, and that is their call to make.
  */
-const remove = async (id, userId) => {
-  const removed = await debtsRepo.remove(id, userId);
+const remove = async (id, financeMode, userId) => {
+  const removed = await debtsRepo.remove(id, financeMode, userId);
   if (!removed) throw ApiError.notFound('Debt record not found');
   return id;
 };
@@ -147,7 +155,7 @@ const addPayment = async (id, user, { amount, paidOn, note }) => {
     throw ApiError.badRequest('A payment has to be more than zero');
   }
 
-  const result = await debtsRepo.addPayment(id, user._id, { amount: value, paidOn, note });
+  const result = await debtsRepo.addPayment(id, modeOf(user), user._id, { amount: value, paidOn, note });
 
   if (result.reason === 'NOT_FOUND') throw ApiError.notFound('Debt record not found');
   if (result.reason === 'OVERPAY') {
@@ -167,8 +175,29 @@ const addPayment = async (id, user, { amount, paidOn, note }) => {
  * balance and records an ordinary payment for it, so the ledger reads the same
  * as if the student had typed the figure themselves.
  */
+/**
+ * Cancels a record without deleting it.
+ *
+ * The distinction matters to the person: "delete" is for something they typed
+ * by mistake, "cancel" is for a debt that existed and no longer counts. The
+ * second keeps the history, and only the first is destructive.
+ */
+const cancel = async (id, user, reason) => {
+  const result = await debtsRepo.cancel(id, modeOf(user), user._id, reason);
+
+  if (result.reason === 'NOT_FOUND') throw ApiError.notFound('Debt record not found');
+  if (result.reason === 'NOT_CANCELLABLE') {
+    throw ApiError.badRequest(
+      result.debt && result.debt.status === 'CANCELLED'
+        ? 'This record is already cancelled'
+        : 'A settled record cannot be cancelled'
+    );
+  }
+  return result.debt;
+};
+
 const settle = async (id, user, note) => {
-  const debt = await debtsRepo.findById(id, user._id);
+  const debt = await debtsRepo.findById(id, modeOf(user), user._id);
   if (!debt) throw ApiError.notFound('Debt record not found');
   if (debt.remainingAmount <= 0) throw ApiError.badRequest('This record is already settled');
 
@@ -180,8 +209,8 @@ const settle = async (id, user, note) => {
 };
 
 /** Removes a mistyped payment and puts the balance back. */
-const removePayment = async (debtId, paymentId, userId) => {
-  const result = await debtsRepo.removePayment(debtId, paymentId, userId);
+const removePayment = async (debtId, paymentId, financeMode, userId) => {
+  const result = await debtsRepo.removePayment(debtId, paymentId, financeMode, userId);
 
   if (result.reason === 'NOT_FOUND') throw ApiError.notFound('Debt record not found');
   if (result.reason === 'PAYMENT_NOT_FOUND') throw ApiError.notFound('Payment not found');
@@ -197,10 +226,10 @@ const removePayment = async (debtId, paymentId, userId) => {
  * netBalance = receivable - payable, so a positive number means more is owed to
  * them than by them. Only outstanding amounts count; a settled debt is history.
  */
-const summary = async (userId) => {
+const summary = async (userId, financeMode) => {
   const [totals, dueSoon] = await Promise.all([
-    debtsRepo.summary(userId),
-    debtsRepo.dueWithin(userId, DUE_SOON_DAYS),
+    debtsRepo.summary(userId, financeMode),
+    debtsRepo.dueWithin(userId, financeMode, DUE_SOON_DAYS),
   ]);
 
   return {
@@ -224,6 +253,7 @@ module.exports = {
   update,
   remove,
   addPayment,
+  cancel,
   settle,
   removePayment,
   summary,

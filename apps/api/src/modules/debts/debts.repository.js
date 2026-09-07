@@ -25,7 +25,7 @@ const { toApi, toApiList, buildSet, isUuid } = require('../../infrastructure/dat
 const DEBT_COLUMNS = `
   d.*,
   (d.original_amount - d.paid_amount) AS remaining_amount,
-  (d.status <> 'SETTLED' AND d.due_date IS NOT NULL AND d.due_date < now()) AS is_overdue`;
+  (d.status NOT IN ('SETTLED', 'CANCELLED') AND d.due_date IS NOT NULL AND d.due_date < now()) AS is_overdue`;
 
 /* ------------------------------ reading ----------------------------- */
 
@@ -46,9 +46,9 @@ const escapeLike = (value) => String(value).replace(/[\\%_]/g, (c) => `\\${c}`);
  * `status=OVERDUE` is a filter on the derived expression, not on the column,
  * which is why it is spelled out here rather than compared to `d.status`.
  */
-const buildFilters = (userId, filters = {}) => {
-  const clauses = ['d.user_id = $1'];
-  const values = [userId];
+const buildFilters = (userId, financeMode, filters = {}) => {
+  const clauses = ['d.user_id = $1', 'd.finance_mode = $2'];
+  const values = [userId, financeMode];
   const next = () => values.length + 1;
 
   const { kind, status, search, from, to, dueFrom, dueTo } = filters;
@@ -59,10 +59,10 @@ const buildFilters = (userId, filters = {}) => {
   }
 
   if (status === 'OVERDUE') {
-    clauses.push(`d.status <> 'SETTLED' AND d.due_date IS NOT NULL AND d.due_date < now()`);
+    clauses.push(`d.status NOT IN ('SETTLED', 'CANCELLED') AND d.due_date IS NOT NULL AND d.due_date < now()`);
   } else if (status === 'OUTSTANDING') {
-    clauses.push(`d.status <> 'SETTLED'`);
-  } else if (['PENDING', 'PARTIALLY_PAID', 'SETTLED'].includes(status)) {
+    clauses.push(`d.status NOT IN ('SETTLED', 'CANCELLED')`);
+  } else if (['PENDING', 'PARTIALLY_PAID', 'SETTLED', 'CANCELLED'].includes(status)) {
     clauses.push(`d.status = $${next()}`);
     values.push(status);
   }
@@ -103,12 +103,12 @@ const buildFilters = (userId, filters = {}) => {
 };
 
 /** One page of debts, plus the totals for everything the filter matched. */
-const list = async (userId, filters = {}) => {
+const list = async (userId, financeMode, filters = {}) => {
   const page = Math.max(1, Number(filters.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(filters.limit) || 20));
   const order = SORTS[filters.sort] || SORTS.newest;
 
-  const { where, values } = buildFilters(userId, filters);
+  const { where, values } = buildFilters(userId, financeMode, filters);
 
   const rows = await query(
     `SELECT ${DEBT_COLUMNS} FROM debts d
@@ -141,16 +141,23 @@ const list = async (userId, filters = {}) => {
   };
 };
 
-const findById = async (id, userId) => {
+const findById = async (id, financeMode, userId) => {
   if (!isUuid(id)) return null;
   const row = await queryOne(
-    `SELECT ${DEBT_COLUMNS} FROM debts d WHERE d.id = $1 AND d.user_id = $2`,
-    [id, userId]
+    `SELECT ${DEBT_COLUMNS} FROM debts d WHERE d.id = $1 AND d.user_id = $2 AND d.finance_mode = $3`,
+    [id, userId, financeMode]
   );
   return row ? toApi(row) : null;
 };
 
-/** The ledger behind one debt, newest payment first. */
+/**
+ * The ledger behind one debt, newest payment first.
+ *
+ * No mode filter, and none is needed: debt_payments has no mode of its own -
+ * it inherits the debt's, through the composite foreign key - and the service
+ * has already confirmed the debt is one this person can see in this mode
+ * before asking for its ledger.
+ */
 const payments = async (debtId, userId) => {
   if (!isUuid(debtId)) return [];
   const rows = await query(
@@ -167,12 +174,13 @@ const payments = async (debtId, userId) => {
 const create = async (userId, input) => {
   const row = await queryOne(
     `INSERT INTO debts
-       (user_id, kind, person_name, person_contact, original_amount,
-        transaction_date, due_date, category, note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       (user_id, finance_mode, kind, person_name, person_contact, original_amount,
+        transaction_date, due_date, category, note, purpose, purpose_category)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      RETURNING ${DEBT_COLUMNS.replace(/d\./g, '')}`,
     [
       userId,
+      input.financeMode,
       input.kind,
       input.personName,
       input.personContact || '',
@@ -181,6 +189,8 @@ const create = async (userId, input) => {
       input.dueDate || null,
       input.category || null,
       input.note || '',
+      input.purpose || '',
+      input.purposeCategory || null,
     ]
   );
   return toApi(row);
@@ -190,9 +200,11 @@ const create = async (userId, input) => {
  * Applies a partial update. The money columns are deliberately not settable:
  * a balance is what the ledger says it is, not what a request claims.
  */
-const update = async (id, userId, patch) => {
+const update = async (id, financeMode, userId, patch) => {
   const columns = {
     kind: patch.kind,
+    purpose: patch.purpose,
+    purpose_category: patch.purposeCategory,
     person_name: patch.personName,
     person_contact: patch.personContact,
     original_amount: patch.originalAmount,
@@ -203,7 +215,7 @@ const update = async (id, userId, patch) => {
   };
 
   const { fragment, values, next } = buildSet(columns);
-  if (!fragment) return findById(id, userId);
+  if (!fragment) return findById(id, financeMode, userId);
 
   // Changing the original amount can change what the status should be - paying
   // 500 against a debt later corrected to 500 settles it - so the status is
@@ -236,22 +248,66 @@ const update = async (id, userId, patch) => {
               ELSE NULL END,
             updated_at = now()
       WHERE id = $${idPosition} AND user_id = $${idPosition + 1}
+        AND finance_mode = $${idPosition + 2}
       RETURNING id`,
-    [...values, ...amountValues, id, userId]
+    [...values, ...amountValues, id, userId, financeMode]
   );
   if (!row) return null;
 
-  return findById(id, userId);
+  return findById(id, financeMode, userId);
 };
 
-const remove = async (id, userId) => {
+const remove = async (id, financeMode, userId) => {
   if (!isUuid(id)) return false;
   // debt_payments is ON DELETE CASCADE, so the ledger goes with it.
-  const rows = await query(`DELETE FROM debts WHERE id = $1 AND user_id = $2 RETURNING id`, [
-    id,
-    userId,
-  ]);
+  const rows = await query(
+    `DELETE FROM debts WHERE id = $1 AND user_id = $2 AND finance_mode = $3 RETURNING id`,
+    [id, userId, financeMode]
+  );
   return rows.length > 0;
+};
+
+/**
+ * Marks a record cancelled: it was never really owed, or both sides walked
+ * away from it.
+ *
+ * Deliberately not a delete. The ledger stays, the record stays readable, and
+ * the row simply stops counting towards what anybody owes - every summary and
+ * overdue query already excludes CANCELLED. Someone who wrote down a debt that
+ * turned out to be a mistake still wants to see that they wrote it down.
+ *
+ * Already-cancelled and already-settled rows are refused rather than silently
+ * re-cancelled: a settled debt is a finished story, and cancelling it would
+ * quietly rewrite what was paid.
+ */
+const cancel = async (id, financeMode, userId, reason) => {
+  if (!isUuid(id)) return { reason: 'NOT_FOUND' };
+
+  const row = await queryOne(
+    `UPDATE debts
+        SET status = 'CANCELLED',
+            -- The reason is appended to the note, never a replacement for it:
+            -- whatever the person already wrote about this debt is still the
+            -- most useful thing on the record. nullif keeps an empty note from
+            -- contributing a blank first line.
+            note = CASE
+              WHEN $4::text IS NULL THEN note
+              WHEN nullif(note, '') IS NULL THEN $4::text
+              ELSE note || chr(10) || $4::text
+            END,
+            updated_at = now()
+      WHERE id = $1 AND user_id = $2 AND finance_mode = $3
+        AND status NOT IN ('SETTLED', 'CANCELLED')
+      RETURNING ${DEBT_COLUMNS.replace(/d\./g, '')}`,
+    [id, userId, financeMode, reason ? String(reason).trim() : null]
+  );
+
+  if (row) return { reason: 'OK', debt: toApi(row) };
+
+  // Nothing changed. Which of the two it was matters to the caller: a 404 for
+  // someone else's record, a 400 for one that cannot be cancelled.
+  const existing = await findById(id, financeMode, userId);
+  return { reason: existing ? 'NOT_CANCELLABLE' : 'NOT_FOUND', debt: existing };
 };
 
 /* ----------------------------- payments ----------------------------- */
@@ -267,14 +323,14 @@ const remove = async (id, userId) => {
  * Returns a reason rather than throwing, so the service decides what each one
  * means to a caller.
  */
-const addPayment = async (debtId, userId, { amount, paidOn, note }) =>
+const addPayment = async (debtId, financeMode, userId, { amount, paidOn, note }) =>
   transaction(async (tx) => {
     if (!isUuid(debtId)) return { reason: 'NOT_FOUND' };
 
     const current = await tx.queryOne(
       `SELECT original_amount, paid_amount, status
-         FROM debts WHERE id = $1 AND user_id = $2 FOR UPDATE`,
-      [debtId, userId]
+         FROM debts WHERE id = $1 AND user_id = $2 AND finance_mode = $3 FOR UPDATE`,
+      [debtId, userId, financeMode]
     );
     if (!current) return { reason: 'NOT_FOUND' };
 
@@ -313,8 +369,8 @@ const addPayment = async (debtId, userId, { amount, paidOn, note }) =>
     );
 
     const row = await tx.queryOne(
-      `SELECT ${DEBT_COLUMNS} FROM debts d WHERE d.id = $1 AND d.user_id = $2`,
-      [debtId, userId]
+      `SELECT ${DEBT_COLUMNS} FROM debts d WHERE d.id = $1 AND d.user_id = $2 AND d.finance_mode = $3`,
+      [debtId, userId, financeMode]
     );
 
     return {
@@ -332,13 +388,13 @@ const addPayment = async (debtId, userId, { amount, paidOn, note }) =>
  * remaining ledger implies, so undoing the payment that settled a debt reopens
  * it rather than leaving it wrongly closed.
  */
-const removePayment = async (debtId, paymentId, userId) =>
+const removePayment = async (debtId, paymentId, financeMode, userId) =>
   transaction(async (tx) => {
     if (!isUuid(debtId) || !isUuid(paymentId)) return { reason: 'NOT_FOUND' };
 
     const locked = await tx.queryOne(
-      `SELECT id FROM debts WHERE id = $1 AND user_id = $2 FOR UPDATE`,
-      [debtId, userId]
+      `SELECT id FROM debts WHERE id = $1 AND user_id = $2 AND finance_mode = $3 FOR UPDATE`,
+      [debtId, userId, financeMode]
     );
     if (!locked) return { reason: 'NOT_FOUND' };
 
@@ -365,8 +421,8 @@ const removePayment = async (debtId, paymentId, userId) =>
     );
 
     const row = await tx.queryOne(
-      `SELECT ${DEBT_COLUMNS} FROM debts d WHERE d.id = $1 AND d.user_id = $2`,
-      [debtId, userId]
+      `SELECT ${DEBT_COLUMNS} FROM debts d WHERE d.id = $1 AND d.user_id = $2 AND d.finance_mode = $3`,
+      [debtId, userId, financeMode]
     );
     return { reason: 'OK', debt: toApi(row) };
   });
@@ -380,22 +436,22 @@ const removePayment = async (debtId, paymentId, userId) =>
  * figure is summed in SQL over numeric columns, so the totals are exact and the
  * frontend never adds money up itself.
  */
-const summary = async (userId) => {
+const summary = async (userId, financeMode) => {
   const row = await queryOne(
     `SELECT
        coalesce(sum(original_amount - paid_amount)
-                FILTER (WHERE kind = 'BORROWED' AND status <> 'SETTLED'), 0) AS payable,
+                FILTER (WHERE kind = 'BORROWED' AND status NOT IN ('SETTLED', 'CANCELLED')), 0) AS payable,
        coalesce(sum(original_amount - paid_amount)
-                FILTER (WHERE kind = 'LENT' AND status <> 'SETTLED'), 0) AS receivable,
+                FILTER (WHERE kind = 'LENT' AND status NOT IN ('SETTLED', 'CANCELLED')), 0) AS receivable,
        coalesce(sum(original_amount - paid_amount)
-                FILTER (WHERE status <> 'SETTLED'
+                FILTER (WHERE status NOT IN ('SETTLED', 'CANCELLED')
                         AND due_date IS NOT NULL AND due_date < now()), 0) AS overdue,
-       count(*) FILTER (WHERE status <> 'SETTLED')::bigint AS outstanding_count,
+       count(*) FILTER (WHERE status NOT IN ('SETTLED', 'CANCELLED'))::bigint AS outstanding_count,
        count(*) FILTER (WHERE status = 'SETTLED')::bigint AS settled_count,
-       count(*) FILTER (WHERE status <> 'SETTLED'
+       count(*) FILTER (WHERE status NOT IN ('SETTLED', 'CANCELLED')
                         AND due_date IS NOT NULL AND due_date < now())::bigint AS overdue_count
-     FROM debts WHERE user_id = $1`,
-    [userId]
+     FROM debts WHERE user_id = $1 AND finance_mode = $2`,
+    [userId, financeMode]
   );
 
   return {
@@ -409,13 +465,14 @@ const summary = async (userId) => {
 };
 
 /** Outstanding debts falling due within `days`, soonest first. */
-const dueWithin = async (userId, days, limit = 5) => {
+const dueWithin = async (userId, financeMode, days, limit = 5) => {
   const rows = await query(
     `SELECT ${DEBT_COLUMNS} FROM debts d
-      WHERE d.user_id = $1 AND d.status <> 'SETTLED' AND d.due_date IS NOT NULL
+      WHERE d.user_id = $1 AND d.finance_mode = $4
+        AND d.status NOT IN ('SETTLED', 'CANCELLED') AND d.due_date IS NOT NULL
         AND d.due_date <= now() + ($2 || ' days')::interval
       ORDER BY d.due_date ASC LIMIT $3`,
-    [userId, String(days), limit]
+    [userId, String(days), limit, financeMode]
   );
   return toApiList(rows);
 };
@@ -427,6 +484,7 @@ module.exports = {
   create,
   update,
   remove,
+  cancel,
   addPayment,
   removePayment,
   summary,

@@ -8,6 +8,7 @@ import Modal from '../../shared/components/ui/Modal';
 import { ExpenseForm } from '../../features/expenses';
 import { FeedbackModal } from '../../features/feedback';
 import useCategories from '../../shared/hooks/useCategories';
+import useT from '../../shared/i18n/I18nProvider';
 import useMutation from '../../shared/hooks/useMutation';
 import { notifyDataChanged } from '../../shared/hooks/useAsync';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -53,6 +54,7 @@ export default function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const { t } = useT();
 
   const openQuickAdd = useCallback(() => setQuickAddOpen(true), []);
   const closeQuickAdd = useCallback(() => setQuickAddOpen(false), []);
@@ -75,7 +77,7 @@ export default function AppLayout() {
     <QuickAddProvider open={openQuickAdd}>
       <div className="flex min-h-full flex-col bg-canvas-light lg:h-full lg:min-h-0 lg:overflow-hidden dark:bg-canvas-dark">
       <a href="#main-content" className="hw-skip-link">
-        Skip to main content
+        {t('nav.skipToContent')}
       </a>
 
       <Navbar onOpenMenu={() => setMenuOpen(true)} onOpenFeedback={openFeedback} />
@@ -96,7 +98,7 @@ export default function AppLayout() {
 
       {/* Mobile bottom navigation. Two tabs, the add button, two more tabs. */}
       <nav
-        aria-label="Main"
+        aria-label={t('nav.mainNavigation')}
         className="hw-safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-canvas-card/95 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-canvas-darkCard/95"
       >
         <ul className="mx-auto flex max-w-md items-end">
@@ -139,7 +141,8 @@ export default function AppLayout() {
   );
 }
 
-function MobileTab({ item: { to, label, icon: Icon } }) {
+function MobileTab({ item: { to, key, icon: Icon } }) {
+  const { t } = useT();
   return (
     <li className="flex-1">
       <NavLink
@@ -155,7 +158,7 @@ function MobileTab({ item: { to, label, icon: Icon } }) {
         {({ isActive }) => (
           <>
             <Icon className="h-5 w-5" aria-hidden="true" />
-            {label}
+            {t(`nav.${key}`)}
             {isActive && <span className="sr-only">(current page)</span>}
           </>
         )}

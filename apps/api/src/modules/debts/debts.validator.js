@@ -1,10 +1,40 @@
 const { body, param, query } = require('express-validator');
 const { idParam, amount } = require('../../shared/validation/rules');
+const catalogue = require('@hisabkikitab/contracts/catalogue');
 
 const KINDS = ['BORROWED', 'LENT'];
 /** OUTSTANDING and OVERDUE are filters over derived state, not stored values. */
-const FILTER_STATUSES = ['PENDING', 'PARTIALLY_PAID', 'SETTLED', 'OVERDUE', 'OUTSTANDING'];
+const FILTER_STATUSES = ['PENDING', 'PARTIALLY_PAID', 'SETTLED', 'CANCELLED', 'OVERDUE', 'OUTSTANDING'];
 const SORTS = ['newest', 'oldest', 'amount', 'remaining', 'due'];
+const PURPOSE_CATEGORIES = catalogue.idsOf('udhaarPurpose');
+
+/**
+ * The free-text "what was it for", and the reason it is worth storing.
+ *
+ * Six months later "Ali - 5000" means nothing. "Ali - 5000 - hostel fee" is a
+ * record someone can act on. It is optional, because forcing a sentence out of
+ * someone recording a debt in a hurry gets "asdf".
+ */
+const purpose = (chain) =>
+  chain.isString().trim().isLength({ max: 300 }).withMessage('Keep the purpose under 300 characters');
+
+/**
+ * A purpose category must be one of the known ones, and the ones the catalogue
+ * marks requiresNote - "Other", in both languages - must come with the note
+ * that makes them mean something. A record filed under "Other" with nothing
+ * written is the same as a record filed under nothing.
+ */
+const purposeCategory = (chain) =>
+  chain
+    .isIn(PURPOSE_CATEGORIES)
+    .withMessage('Unknown purpose')
+    .bail()
+    .custom((value, { req }) => {
+      if (!catalogue.listRequiresNote('udhaarPurpose', value)) return true;
+      const written = String(req.body.purpose || req.body.note || '').trim();
+      if (written) return true;
+      throw new Error('Say a little more about what this was for');
+    });
 
 /** Shared by create and update; optional on update, required on create. */
 const personName = (chain) =>
@@ -20,6 +50,8 @@ const debtValidators = {
     body('dueDate').optional({ nullable: true }).isISO8601().toDate(),
     body('category').optional({ nullable: true }).isString().trim().isLength({ max: 40 }),
     body('note').optional().isString().trim().isLength({ max: 500 }),
+    purpose(body('purpose').optional({ nullable: true })),
+    purposeCategory(body('purposeCategory').optional({ nullable: true, checkFalsy: true })),
   ],
 
   update: [
@@ -32,6 +64,8 @@ const debtValidators = {
     body('dueDate').optional({ nullable: true }).isISO8601().toDate(),
     body('category').optional({ nullable: true }).isString().trim().isLength({ max: 40 }),
     body('note').optional().isString().trim().isLength({ max: 500 }),
+    purpose(body('purpose').optional({ nullable: true })),
+    purposeCategory(body('purposeCategory').optional({ nullable: true, checkFalsy: true })),
   ],
 
   byId: [idParam('id')],
@@ -43,6 +77,9 @@ const debtValidators = {
     body('paidOn').optional().isISO8601().toDate(),
     body('note').optional().isString().trim().isLength({ max: 200 }),
   ],
+
+  /** A reason is optional; if given it is appended to the note, not replacing it. */
+  cancel: [idParam('id'), body('reason').optional().isString().trim().isLength({ max: 200 })],
 
   settle: [idParam('id'), body('note').optional().isString().trim().isLength({ max: 200 })],
 

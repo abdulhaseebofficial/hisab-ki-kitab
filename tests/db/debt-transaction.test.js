@@ -67,7 +67,7 @@ const section = (t) => console.log(`\n--- ${t} ---`);
     // each conclude there was room.
     const attempts = await Promise.all(
       Array.from({ length: 10 }, () =>
-        debtsRepo.addPayment(raced.id, userId, { amount: 30 }).catch((e) => ({ reason: 'THREW', error: e.message }))
+        debtsRepo.addPayment(raced.id, 'student', userId, { amount: 30 }).catch((e) => ({ reason: 'THREW', error: e.message }))
       )
     );
 
@@ -140,7 +140,7 @@ const section = (t) => console.log(`\n--- ${t} ---`);
       [`debt_txn_other_${Date.now()}@test.local`]
     );
 
-    const theirs = await debtsRepo.addPayment(raced.id, stranger.id, { amount: 10 });
+    const theirs = await debtsRepo.addPayment(raced.id, 'student', stranger.id, { amount: 10 });
     ok('paying a debt you do not own is not found', theirs.reason === 'NOT_FOUND', theirs.reason);
 
     const unchanged = await queryOne(`SELECT paid_amount FROM debts WHERE id = $1`, [raced.id]);
@@ -148,6 +148,27 @@ const section = (t) => console.log(`\n--- ${t} ---`);
       Number(unchanged.paid_amount) === accepted * 30, `paid_amount = ${unchanged.paid_amount}`);
 
     await query(`DELETE FROM users WHERE id = $1`, [stranger.id]);
+
+    /* ------------------------------------------------------------------ */
+    section('A DEBT IS INVISIBLE FROM THE OTHER FINANCE MODE');
+
+    // The record still belongs to this person. It belongs to their student
+    // life, and looking at their household should not find it - otherwise the
+    // two sets of books are one set with a label on it.
+    const fromOtherMode = await debtsRepo.findById(raced.id, 'householder', userId);
+    ok('the same person cannot see it from the other mode', fromOtherMode === null,
+      fromOtherMode ? 'it was returned' : 'not found, as it should be');
+
+    const payFromOtherMode = await debtsRepo.addPayment(raced.id, 'householder', userId, { amount: 5 });
+    ok('and cannot pay it from there either', payFromOtherMode.reason === 'NOT_FOUND',
+      payFromOtherMode.reason);
+
+    const stillOwn = await debtsRepo.findById(raced.id, 'student', userId);
+    ok('while their own mode still finds it', stillOwn !== null);
+
+    const houseSummary = await debtsRepo.summary(userId, 'householder');
+    ok('and it counts for nothing in the other mode totals',
+      Number(houseSummary.payable) === 0, `payable = ${houseSummary.payable}`);
   } catch (err) {
     console.error('\nERROR:', err.message);
     failed += 1;

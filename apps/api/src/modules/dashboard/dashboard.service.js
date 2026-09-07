@@ -19,6 +19,7 @@ const {
 } = require('../../infrastructure/scheduling/recurringExpenses.job');
 const { runChecksForUser } = require('../notifications/notifications.service');
 const { currentPeriod, changePercent } = require('../../shared/utils/calculations');
+const { modeOf } = require('../../shared/categories');
 
 const RECENT_EXPENSE_COUNT = 8;
 
@@ -37,10 +38,10 @@ const summary = async (user, query) => {
 
   const [snapshot, recent, debtPosition] = await Promise.all([
     buildSnapshot(user, period),
-    expenses.listRecent(user._id, RECENT_EXPENSE_COUNT),
+    expenses.listRecent(user._id, modeOf(user), RECENT_EXPENSE_COUNT),
     // Fetched here rather than by a second request from the browser, and never
     // recomputed there: the debt totals are exact decimal sums in SQL.
-    debts.summary(user._id),
+    debts.summary(user._id, modeOf(user)),
   ]);
 
   // Fire and forget: the student should not wait on the alert rules.

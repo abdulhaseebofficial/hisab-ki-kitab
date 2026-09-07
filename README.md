@@ -22,12 +22,29 @@ dhaba outside the gate that never closes.
 
 ## Features
 
+### Two ways to keep the books
+- **Student mode** — pocket money, the mess bill, hostel fee, books, travel home
+- **Householder mode** — rent, electricity, gas, water, groceries, school fees,
+  family support, installments
+- Each record belongs to one mode. Switching shows the other set of books and
+  **deletes nothing**: both stay, and switching back brings the first one right
+  where it was left
+- Categories, the dashboard wording and the AI advisor's persona all follow the
+  mode, so a householder is never advised to eat the mess food they paid for
+
+### English and Roman Urdu
+- Every screen reads in either language, chosen at setup or in Settings
+- Only the words change. Category ids, statuses and anything typed by hand -
+  a note, a person's name, a custom category - are stored once and never
+  translated, so switching language cannot rewrite anybody's history
+- A test fails the build if a string exists in one language and not the other
+
 ### Money in, money out
 - **Expenses** — amount, category, description, payment method (Cash / JazzCash /
   Easypaisa / Bank Transfer / Card / Raast), date
 - **Recurring expenses** — the mess bill or hostel fee is entered once and added
   automatically every month
-- **Custom categories** on top of the nine built-in ones
+- **Custom categories** on top of the built-in ones for the current mode
 - **Search and filter** by text, date range, category, payment method and amount,
   with pagination and a live total for whatever is filtered
 - **Income tracking** — pocket money, part-time work, scholarships
@@ -79,7 +96,8 @@ reaches the browser.
 - First-run onboarding wizard
 - In-app notification tray: overspending, bills due, goal deadlines, log reminders
 - Light / dark / system theme
-- Full data export (JSON) and account deletion
+- Full data export (JSON) - **both modes**, whichever one is currently open -
+  and account deletion
 - Mobile-first responsive layout with a bottom tab bar on phones
 
 ---
@@ -278,8 +296,12 @@ all of it with nothing extra installed.
 
 | Suite | Covers |
 |---|---|
-| `tests/api.test.js` | 58 checks: every resource end to end, the auth edges, and the authorisation boundary between two students |
-| `tests/settings.test.js` | 44 checks: every Settings control, including the destructive ones |
+| `tests/e2e/api.test.js` | Every resource end to end, the auth edges, and the authorisation boundary between two people |
+| `tests/e2e/settings.test.js` | Every Settings control including the destructive ones, plus switching finance mode and language |
+| `tests/e2e/debts.test.js` | Udhaar end to end: the ledger, overpayment, purposes, and cancelling without deleting |
+| `tests/db/*.test.js` | The guarantees only a real database can prove: row locks under concurrency, and rollback |
+| `tests/unit/i18n-coverage.test.js` | Fails the build if a string exists in one language and not the other |
+| `tests/security/*` | The attacks that must keep failing, run against a live server |
 
 They exercise the failure paths as well as the happy ones — a negative amount,
 a tampered token, a malformed e-mail, a category still in use — and assert the
@@ -287,6 +309,13 @@ arithmetic, not just the status code (`income − spent = remaining`).
 
 The authorisation block is the one worth keeping: it registers a second student
 and proves the first one's expenses, edits and goals are all invisible to them.
+The finance-mode block is its sibling: it proves the same person's own records
+are invisible from the other mode, and that switching back returns every one of
+them untouched.
+
+Run the suites **one at a time**. Several at once will exhaust the database
+connection pool and fail with a connection timeout that has nothing to do with
+the code under test.
 
 Anything destructive (changing a password, deleting an account) runs against a
 throwaway account created for the run, so the seeded demo data survives. The
@@ -301,23 +330,35 @@ suites exit non-zero on failure, so CI can gate on them.
 ## Data models
 
 **User** — `name, email, password, monthlyIncome, currency, university, hostelName,
-customCategories[], theme, onboardingCompleted, tokenVersion, createdAt`
+customCategories[], theme, financeMode, language, onboardingCompleted, tokenVersion,
+createdAt`
 
-**Expense** — `userId, amount, category, description, paymentMethod, date,
-isRecurring, recurringFrequency, nextRunAt, generatedFrom, createdAt`
+**Expense** — `userId, financeMode, amount, category, description, paymentMethod,
+date, isRecurring, recurringFrequency, nextRunAt, generatedFrom, createdAt`
 
-**Income** — `userId, amount, source, note, date`
+**Income** — `userId, financeMode, amount, source, note, date`
+
+**Debt** — `userId, financeMode, kind, personName, personContact, originalAmount,
+paidAmount, status, purpose, purposeCategory, transactionDate, dueDate, category,
+note, settledAt` *(with a `DebtPayment` ledger hanging off it)*
 
 **Goal** — `userId, title, targetAmount, savedAmount, deadline, icon, note,
 isCompleted, completedAt, contributions[], createdAt`
 
-**Budget** — `userId, category, limit, month, year` *(unique per user + category + month)*
+**Budget** — `userId, financeMode, category, limit, month, year`
+*(unique per user + mode + category + month)*
 
 **Notification** — `userId, type, title, message, isRead, meta, dedupeKey`
 
 **ChatMessage** — `userId, role, content` *(the AI advisor conversation)*
 
 **Feedback** — `userId, type, rating, message, page, emailed, createdAt`
+
+`financeMode` sits on the **row**, not only on the user. That is what lets
+somebody switch between student and householder without either set of books
+being touched, and it is why every user-owned query filters on the mode as well
+as the user id. Goals are the exception, and deliberately shared: a savings goal
+is one goal whichever way the person is keeping their books.
 
 ### One deliberate design decision
 
@@ -348,7 +389,7 @@ utility routes requires `Authorization: Bearer <accessToken>`.
 ### Profile
 | Method | Endpoint | Purpose |
 |---|---|---|
-| PUT | `/profile` | Update name, income, currency, university, hostel |
+| PUT | `/profile` | Update name, income, currency, university, hostel, finance mode, language |
 | POST | `/profile/onboarding` | Finish the first-run wizard |
 | GET / POST | `/profile/categories` | List / add a custom category |
 | DELETE | `/profile/categories/:name` | Remove a custom category |
@@ -369,6 +410,24 @@ utility routes requires `Authorization: Bearer <accessToken>`.
 | GET / POST | `/budget` | List with real spend / set one limit |
 | POST | `/budget/bulk` | Save a whole plan at once |
 | PUT / DELETE | `/budget/:id` | Update, remove |
+
+### Udhaar (money lent and borrowed)
+Every route is scoped to the signed-in person **and** their current finance mode.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/debts` | Filter + paginate (`kind`, `status`, `search`, `from`, `to`, `sortBy`, `page`, `limit`) |
+| GET | `/debts/summary` | What you owe, what you are owed, the net, and what is overdue |
+| POST / PUT / DELETE | `/debts[/:id]` | Create, correct, delete |
+| GET / POST | `/debts/:id/payments` | The repayment ledger / record a payment |
+| DELETE | `/debts/:id/payments/:paymentId` | Undo a mistyped payment |
+| POST | `/debts/:id/settle` | Clear whatever is left in one go |
+| POST | `/debts/:id/cancel` | Stop it counting **without** deleting it or its ledger |
+
+`kind` is stored as `BORROWED` / `LENT` and `status` as `PENDING`,
+`PARTIALLY_PAID`, `SETTLED` or `CANCELLED`. Those are values, not labels - the
+words a person reads ("You owe", "Active", "Hisab Clear") live in the interface,
+so changing language never touches a stored record.
 
 ### Dashboard, reports, notifications
 | Method | Endpoint | Purpose |

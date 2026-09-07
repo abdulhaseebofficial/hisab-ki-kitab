@@ -7,10 +7,10 @@ const { toApi, toApiList, buildSet, isUuid } = require('../../infrastructure/dat
 const { startOfMonth, endOfMonth } = require('../../shared/utils/calculations');
 
 /** Turns the query string into a WHERE clause and its parameters. */
-const buildWhere = (userId, q = {}) => {
-  const clauses = ['user_id = $1'];
-  const values = [userId];
-  let n = 2;
+const buildWhere = (userId, financeMode, q = {}) => {
+  const clauses = ['user_id = $1', 'finance_mode = $2'];
+  const values = [userId, financeMode];
+  let n = 3;
 
   const { month, year, from, to, source } = q;
 
@@ -43,8 +43,8 @@ const buildWhere = (userId, q = {}) => {
 };
 
 /** The filtered list plus its total, newest first. */
-const list = async (userId, q = {}) => {
-  const { where, values } = buildWhere(userId, q);
+const list = async (userId, financeMode, q = {}) => {
+  const { where, values } = buildWhere(userId, financeMode, q);
 
   const [items, summary] = await Promise.all([
     query(`SELECT * FROM income WHERE ${where} ORDER BY date DESC, id DESC`, values),
@@ -55,34 +55,37 @@ const list = async (userId, q = {}) => {
 };
 
 /** This month's income grouped by where it came from, biggest first. */
-const totalsBySource = async (userId, from, to) => {
+const totalsBySource = async (userId, financeMode, from, to) => {
   const rows = await query(
     `SELECT source, sum(amount) AS total
        FROM income
-      WHERE user_id = $1 AND date >= $2 AND date <= $3
+      WHERE user_id = $1 AND finance_mode = $4 AND date >= $2 AND date <= $3
       GROUP BY source
       ORDER BY total DESC`,
-    [userId, from, to]
+    [userId, from, to, financeMode]
   );
   return rows.map((r) => ({ source: r.source, total: Number(r.total) }));
 };
 
-const findById = async (id, userId) => {
+const findById = async (id, financeMode, userId) => {
   if (!isUuid(id)) return null;
-  const row = await queryOne(`SELECT * FROM income WHERE id = $1 AND user_id = $2`, [id, userId]);
+  const row = await queryOne(
+    `SELECT * FROM income WHERE id = $1 AND user_id = $2 AND finance_mode = $3`,
+    [id, userId, financeMode]
+  );
   return toApi(row);
 };
 
 const create = async (userId, data) => {
   const row = await queryOne(
-    `INSERT INTO income (user_id, amount, source, note, date)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [userId, data.amount, data.source || 'Pocket Money', data.note || '', data.date]
+    `INSERT INTO income (user_id, finance_mode, amount, source, note, date)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [userId, data.financeMode, data.amount, data.source || 'Pocket Money', data.note || '', data.date]
   );
   return toApi(row);
 };
 
-const update = async (id, userId, patch) => {
+const update = async (id, financeMode, userId, patch) => {
   const { fragment, values, next } = buildSet({
     amount: patch.amount,
     source: patch.source,
@@ -93,26 +96,29 @@ const update = async (id, userId, patch) => {
 
   const row = await queryOne(
     `UPDATE income SET ${fragment}, updated_at = now()
-      WHERE id = $${next} AND user_id = $${next + 1} RETURNING *`,
-    [...values, id, userId]
+      WHERE id = $${next} AND user_id = $${next + 1} AND finance_mode = $${next + 2}
+      RETURNING *`,
+    [...values, id, userId, financeMode]
   );
   return toApi(row);
 };
 
-const remove = async (id, userId) => {
+const remove = async (id, financeMode, userId) => {
   if (!isUuid(id)) return false;
-  const rows = await query(`DELETE FROM income WHERE id = $1 AND user_id = $2 RETURNING id`, [
+  const rows = await query(
+    `DELETE FROM income WHERE id = $1 AND user_id = $2 AND finance_mode = $3 RETURNING id`, [
     id,
     userId,
+    financeMode,
   ]);
   return rows.length > 0;
 };
 
 /** Every income row this student has, for the export. */
-const listAllForUser = async (userId) => {
+const listAllForUser = async (userId, financeMode) => {
   const rows = await query(
-    `SELECT * FROM income WHERE user_id = $1 ORDER BY date DESC, id DESC`,
-    [userId]
+    `SELECT * FROM income WHERE user_id = $1 AND finance_mode = $2 ORDER BY date DESC, id DESC`,
+    [userId, financeMode]
   );
   return toApiList(rows);
 };

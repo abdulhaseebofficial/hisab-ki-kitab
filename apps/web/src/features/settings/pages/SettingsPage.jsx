@@ -6,11 +6,16 @@ import { z } from 'zod';
 import PageHeader from '../../../shared/components/ui/PageHeader';
 import { useAuth } from '../../auth';
 import { useTheme } from '../../../app/providers/ThemeProvider';
+import useT from '../../../shared/i18n/I18nProvider';
+import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog';
 import useCategories from '../../../shared/hooks/useCategories';
 import useMutation from '../../../shared/hooks/useMutation';
+import { notifyDataChanged } from '../../../shared/hooks/useAsync';
 import settingsApi from '../api/settingsApi';
 import ProfileCard from '../components/ProfileCard';
 import AppearanceCard from '../components/AppearanceCard';
+import LanguageCard from '../components/LanguageCard';
+import FinanceModeCard from '../components/FinanceModeCard';
 import CategoriesCard from '../components/CategoriesCard';
 import SecurityCard from '../components/SecurityCard';
 import ChangePasswordModal from '../components/ChangePasswordModal';
@@ -54,12 +59,16 @@ export default function Settings() {
   const navigate = useNavigate();
   const { user, updateUser, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { t } = useT();
   const { categories, custom, add, remove } = useCategories();
 
   const [newCategory, setNewCategory] = useState('');
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
+  // The mode being asked about, held until the person confirms. Null means no
+  // question is on screen.
+  const [pendingMode, setPendingMode] = useState(null);
   // Deleting the account is the only write here whose in-flight state is shown,
   // so it gets its own flag; the rest just need the shared toast handling.
   const { saving: busy, run: runDelete } = useMutation();
@@ -105,6 +114,41 @@ export default function Settings() {
     });
   };
 
+  /**
+   * Language is a preference, so it is saved the moment it is picked - there is
+   * nothing to lose by getting it wrong and one more click to get it right.
+   *
+   * The interface changes as soon as updateUser lands, because the provider
+   * reads the same profile.
+   */
+  const changeLanguage = (language) =>
+    run(() => settingsApi.updateProfile({ language }), {
+      success: t('language.changed'),
+      onDone: updateUser,
+    });
+
+  /**
+   * The mode is different: it changes which records the whole app is showing,
+   * so it is confirmed first. Nothing is written, moved or deleted - the other
+   * mode's records are simply out of view until the person switches back, and
+   * the dialog says so.
+   */
+  const confirmModeSwitch = () => {
+    const mode = pendingMode;
+    if (!mode) return undefined;
+    return run(() => settingsApi.updateProfile({ financeMode: mode }), {
+      success: t('mode.switched', { mode: t(`mode.${mode}`) }),
+      onDone: (updated) => {
+        updateUser(updated);
+        setPendingMode(null);
+        // Every mounted screen is showing the other mode's numbers. This is the
+        // same broadcast quick-add uses, and it is what makes the switch take
+        // effect now rather than on the next navigation.
+        notifyDataChanged();
+      },
+    });
+  };
+
   const removeCategory = (name) => run(() => remove(name), { success: `Removed "${name}"` });
 
   const exportData = () =>
@@ -121,6 +165,16 @@ export default function Settings() {
       <PageHeader title="Settings" subtitle="Your profile, your categories, your data." />
 
       <ProfileCard user={user} form={profileForm} onSave={saveProfile} />
+
+      <FinanceModeCard
+        mode={user ? user.financeMode : 'student'}
+        onSelect={setPendingMode}
+      />
+
+      <LanguageCard
+        language={user ? user.language : 'en'}
+        onChange={changeLanguage}
+      />
 
       <AppearanceCard theme={theme} onChange={setTheme} />
 
@@ -141,6 +195,21 @@ export default function Settings() {
         onSetPassword={() => navigate('/forgot-password')}
         onExport={exportData}
         onDelete={() => setDeleteOpen(true)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingMode)}
+        onClose={() => setPendingMode(null)}
+        onConfirm={confirmModeSwitch}
+        variant="primary"
+        title={pendingMode ? t('mode.switchTitle', { mode: t(`mode.${pendingMode}`) }) : ''}
+        message={
+          user
+            ? t('mode.switchBody', { current: t(`mode.${user.financeMode || 'student'}`) })
+            : ''
+        }
+        confirmLabel={t('mode.switchConfirm')}
+        cancelLabel={t('common.cancel')}
       />
 
       <ChangePasswordModal

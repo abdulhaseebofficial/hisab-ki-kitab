@@ -9,6 +9,7 @@ import ConfirmDialog from '../../../shared/components/ui/ConfirmDialog';
 import useAsync from '../../../shared/hooks/useAsync';
 import useMutation from '../../../shared/hooks/useMutation';
 import useDebounce from '../../../shared/hooks/useDebounce';
+import useT from '../../../shared/i18n/I18nProvider';
 import { useAuth } from '../../auth';
 import debtsApi from '../api/debtsApi';
 import DebtSummaryCards from '../components/DebtSummaryCards';
@@ -31,6 +32,7 @@ const DEFAULT_FILTERS = { kind: '', status: 'OUTSTANDING', sort: 'newest', searc
  */
 export default function DebtsPage() {
   const { currency } = useAuth();
+  const { t } = useT();
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [formOpen, setFormOpen] = useState(false);
@@ -104,6 +106,25 @@ export default function DebtsPage() {
         }),
     });
 
+  /**
+   * Cancelling is confirmed like deleting, but the wording has to carry the
+   * difference: this one keeps everything and only stops the record counting.
+   * Somebody reaching for Delete because they did not realise Cancel exists is
+   * the outcome to avoid.
+   */
+  const cancelRecord = () =>
+    setConfirm({
+      title: 'Cancel this record?',
+      message:
+        'It stops counting towards what you owe or are owed. The record and its payment history stay, and you can still read them.',
+      confirmLabel: 'Cancel record',
+      onConfirm: () =>
+        run(() => debtsApi.cancel(openId), {
+          success: 'Record cancelled',
+          onDone: refreshAll,
+        }),
+    });
+
   const deleteRecord = () =>
     setConfirm({
       title: 'Delete this record?',
@@ -125,7 +146,7 @@ export default function DebtsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Udhaar" subtitle="Money you borrowed, and money you are still owed.">
+      <PageHeader title={t('udhaar.title')} subtitle={t('udhaar.subtitle')}>
         <Button icon={Plus} onClick={() => { setEditing(null); setFormOpen(true); }}>
           Add record
         </Button>
@@ -152,13 +173,11 @@ export default function DebtsPage() {
       ) : items.length === 0 ? (
         <EmptyState
           icon={HandCoins}
-          title={filters.search ? 'Nothing matches that' : 'No udhaar recorded'}
+          title={filters.search ? t('udhaar.empty.noMatch') : t('udhaar.empty.title')}
           message={
-            filters.search
-              ? 'Try a different name, or clear the filters.'
-              : 'Lent someone money for the mess bill? Borrowed for a bus ticket home? Add it here so nobody has to remember.'
+            filters.search ? t('udhaar.empty.tryDifferent') : t('udhaar.empty.message')
           }
-          actionLabel={filters.search ? undefined : 'Add the first one'}
+          actionLabel={filters.search ? undefined : t('udhaar.empty.action')}
           actionIcon={Plus}
           onAction={filters.search ? undefined : () => { setEditing(null); setFormOpen(true); }}
         />
@@ -213,6 +232,7 @@ export default function DebtsPage() {
         onSettle={settleFull}
         onEdit={() => { setEditing(detail.debt); setOpenId(null); setFormOpen(true); }}
         onDelete={deleteRecord}
+        onCancel={cancelRecord}
         onRemovePayment={undoPayment}
       />
 

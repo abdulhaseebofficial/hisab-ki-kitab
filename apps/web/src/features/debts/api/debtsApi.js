@@ -53,6 +53,17 @@ const debtsApi = {
     return data.data;
   },
 
+  /**
+   * Stops a record counting without destroying it.
+   *
+   * Different from remove(): that is for something typed by mistake, this is
+   * for a debt that existed and no longer stands. The ledger survives.
+   */
+  async cancel(id, reason) {
+    const { data } = await api.post(`/debts/${id}/cancel`, { reason });
+    return data.data.debt;
+  },
+
   /** Undo a mistyped payment; the balance goes back with it. */
   async removePayment(id, paymentId) {
     const { data } = await api.delete(`/debts/${id}/payments/${paymentId}`);

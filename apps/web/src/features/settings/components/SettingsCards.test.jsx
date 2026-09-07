@@ -12,6 +12,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import AppearanceCard from './AppearanceCard';
+import FinanceModeCard from './FinanceModeCard';
+import LanguageCard from './LanguageCard';
 import CategoriesCard from './CategoriesCard';
 import SecurityCard from './SecurityCard';
 import DeleteAccountModal from './DeleteAccountModal';
@@ -169,5 +171,71 @@ describe('DeleteAccountModal', () => {
   it('shows nothing when closed', () => {
     render(<DeleteAccountModal {...props} open={false} />);
     expect(screen.queryByText(/delete your account/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('FinanceModeCard', () => {
+  it('offers both ways of keeping the books', () => {
+    render(<FinanceModeCard mode="student" onSelect={() => {}} />);
+
+    expect(screen.getByRole('button', { name: /student/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /householder/i })).toBeInTheDocument();
+  });
+
+  it('marks the mode currently in use', () => {
+    render(<FinanceModeCard mode="householder" onSelect={() => {}} />);
+
+    expect(screen.getByRole('button', { name: /householder/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /student/i })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('asks for the other mode, and does not re-ask for the current one', async () => {
+    // Picking the mode you are already in should do nothing at all - not
+    // confirm, not save, not toast.
+    const onSelect = vi.fn();
+    render(<FinanceModeCard mode="student" onSelect={onSelect} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /student/i }));
+    expect(onSelect).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: /householder/i }));
+    expect(onSelect).toHaveBeenCalledWith('householder');
+  });
+
+  it('promises that switching keeps both sets of records', () => {
+    // The one thing a person with two years of history needs to read before
+    // touching this. If this line ever goes missing the card is a trap.
+    render(<FinanceModeCard mode="student" onSelect={() => {}} />);
+
+    expect(screen.getByText(/nothing is deleted/i)).toBeInTheDocument();
+  });
+});
+
+describe('LanguageCard', () => {
+  it('names each language in itself, not only in the active one', () => {
+    // Someone who landed in the wrong language has to be able to recognise
+    // their way out, so the samples do not go through t().
+    render(<LanguageCard language="en" onChange={() => {}} />);
+
+    expect(screen.getByRole('button', { name: /english/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mujhe paise dene hain/i })).toBeInTheDocument();
+  });
+
+  it('reports the language that was picked', async () => {
+    const onChange = vi.fn();
+    render(<LanguageCard language="en" onChange={onChange} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /roman urdu/i }));
+
+    expect(onChange).toHaveBeenCalledWith('roman_ur');
+  });
+
+  it('does nothing when the active language is picked again', async () => {
+    const onChange = vi.fn();
+    render(<LanguageCard language="en" onChange={onChange} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /english/i }));
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

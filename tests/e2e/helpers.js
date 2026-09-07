@@ -93,7 +93,11 @@ async function requireApi() {
     const body = await res.json();
     if (body.database !== 'connected') {
       console.error(`\nThe API is up but its database is ${body.database}.`);
-      console.error('Start MongoDB, then run this again.\n');
+      // This said "Start MongoDB" long after the move to Postgres, which sent
+      // whoever hit it looking for a database this app does not have.
+      console.error('Check POSTGRES_URL in apps/api/.env, then run this again.');
+      console.error('If several suites are running at once the pool may simply');
+      console.error('be exhausted - run them one at a time.\n');
       process.exit(1);
     }
   } catch {

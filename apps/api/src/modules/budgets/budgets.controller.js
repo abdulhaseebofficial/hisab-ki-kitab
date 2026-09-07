@@ -40,13 +40,13 @@ const bulkUpsert = asyncHandler(async (req, res) => {
 
 /** PUT /api/budget/:id */
 const updateBudget = asyncHandler(async (req, res) => {
-  const budget = await budgets.update(req.params.id, req.user._id, req.body.limit);
+  const budget = await budgets.update(req.params.id, req.user.financeMode, req.user._id, req.body.limit);
   res.json({ success: true, message: 'Budget updated', data: { budget } });
 });
 
 /** DELETE /api/budget/:id */
 const deleteBudget = asyncHandler(async (req, res) => {
-  const id = await budgets.remove(req.params.id, req.user._id);
+  const id = await budgets.remove(req.params.id, req.user.financeMode, req.user._id);
   res.json({ success: true, message: 'Budget removed', data: { id } });
 });
 

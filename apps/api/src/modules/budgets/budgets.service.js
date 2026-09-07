@@ -10,7 +10,7 @@
  */
 
 const budgetsRepo = require('./budgets.repository');
-const { allCategories, isOwnCategory } = require('../../shared/categories');
+const { allCategories, isOwnCategory, isOtherModeCategory, modeOf } = require('../../shared/categories');
 const ApiError = require('../../shared/errors/ApiError');
 const { currentPeriod, round2 } = require('../../shared/utils/calculations');
 const { budgetProgress } = require('../analytics/analytics.service');
@@ -25,6 +25,11 @@ const periodFrom = (source = {}) => {
 };
 
 const assertOwnCategory = (user, category) => {
+  if (isOtherModeCategory(user, category)) {
+    throw ApiError.badRequest(
+      'That category belongs to your other finance mode. Switch modes, or pick one from this list.'
+    );
+  }
   if (!isOwnCategory(user, category)) {
     throw ApiError.badRequest(`"${category}" is not one of your categories`);
   }
@@ -33,7 +38,7 @@ const assertOwnCategory = (user, category) => {
 /** Every category limit for a month, joined with real spend, plus the totals. */
 const listForMonth = async (user, query) => {
   const { month, year } = periodFrom(query);
-  const items = await budgetProgress(user._id, month, year);
+  const items = await budgetProgress(user._id, modeOf(user), month, year);
 
   const totals = items.reduce(
     (acc, row) => {
@@ -70,7 +75,7 @@ const setLimit = async (user, body, query) => {
 
   assertOwnCategory(user, category);
 
-  return budgetsRepo.upsert(user._id, category, limit, month, year);
+  return budgetsRepo.upsert(user._id, modeOf(user), category, limit, month, year);
 };
 
 /**
@@ -92,23 +97,23 @@ const setPlan = async (user, body, query) => {
   );
   if (!valid.length) throw ApiError.badRequest('None of those categories are valid');
 
-  const written = await budgetsRepo.upsertMany(user._id, valid, month, year);
+  const written = await budgetsRepo.upsertMany(user._id, modeOf(user), valid, month, year);
   const rows = await budgetProgress(user._id, month, year);
 
   return { written, month, year, items: rows };
 };
 
-const update = async (id, userId, limit) => {
-  const existing = await budgetsRepo.findById(id, userId);
+const update = async (id, financeMode, userId, limit) => {
+  const existing = await budgetsRepo.findById(id, financeMode, userId);
   if (!existing) throw ApiError.notFound('Budget not found');
 
   // A request that names no limit is a no-op rather than an error.
   if (limit === undefined) return existing;
-  return budgetsRepo.update(id, userId, limit);
+  return budgetsRepo.update(id, financeMode, userId, limit);
 };
 
-const remove = async (id, userId) => {
-  const removed = await budgetsRepo.remove(id, userId);
+const remove = async (id, financeMode, userId) => {
+  const removed = await budgetsRepo.remove(id, financeMode, userId);
   if (!removed) throw ApiError.notFound('Budget not found');
   return id;
 };
@@ -116,10 +121,11 @@ const remove = async (id, userId) => {
 /* ------------------- for other modules to build on ------------------ */
 
 /** The raw limits for a month. analytics joins these with real spend. */
-const listForPeriod = (userId, month, year) => budgetsRepo.listForPeriod(userId, month, year);
+const listForPeriod = (userId, financeMode, month, year) =>
+  budgetsRepo.listForPeriod(userId, financeMode, month, year);
 
 /** Every limit this student has ever set, for the data export. */
-const listAllForUser = (userId) => budgetsRepo.listAllForUser(userId);
+const listAllForUser = (userId, financeMode) => budgetsRepo.listAllForUser(userId, financeMode);
 
 module.exports = {
   listForPeriod,

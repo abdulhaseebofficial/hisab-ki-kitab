@@ -22,7 +22,7 @@ const PRIVATE = ['password', 'reset_password_token', 'reset_password_expires', '
 // Everything except the password, which is only fetched where it is compared.
 const PUBLIC_COLUMNS = `
   id, name, email, monthly_income, currency, university, hostel_name,
-  custom_categories, theme, onboarding_completed, token_version,
+  custom_categories, theme, finance_mode, language, onboarding_completed, token_version,
   last_expense_reminder_at, created_at, updated_at,
   -- Not the password: whether there is one. An account created through Google
   -- has none, and the Settings screen has to offer "set a password" rather
@@ -238,6 +238,8 @@ const updateProfile = async (userId, patch) => {
     university: patch.university,
     hostel_name: patch.hostelName,
     theme: patch.theme,
+    finance_mode: patch.financeMode,
+    language: patch.language,
     onboarding_completed: patch.onboardingCompleted,
     custom_categories: patch.customCategories,
     last_expense_reminder_at: patch.lastExpenseReminderAt,

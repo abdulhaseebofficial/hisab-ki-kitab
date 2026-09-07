@@ -54,6 +54,8 @@ const EXPECTED_UNREACHABLE = {
   'packages/contracts/index.js': "required as '@hisabkikitab/contracts', not by path",
   'packages/contracts/validation.js':
     "imported as '@hisabkikitab/contracts/validation' by both apps, not by path",
+  'packages/contracts/catalogue.js':
+    "imported as '@hisabkikitab/contracts/catalogue' by both apps, not by path",
 };
 
 /** Exported on purpose, even though nothing calls them yet. */

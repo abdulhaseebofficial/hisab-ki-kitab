@@ -7,7 +7,7 @@ const asyncHandler = require('../../shared/http/asyncHandler');
 
 /** GET /api/income - optional ?month=&year= or ?from=&to= */
 const listIncome = asyncHandler(async (req, res) => {
-  const { items, total } = await income.list(req.user._id, req.query);
+  const { items, total } = await income.list(req.user._id, req.user.financeMode, req.query);
   res.json({ success: true, data: { items, total } });
 });
 
@@ -19,19 +19,19 @@ const incomeSummary = asyncHandler(async (req, res) => {
 
 /** POST /api/income */
 const createIncome = asyncHandler(async (req, res) => {
-  const entry = await income.create(req.user._id, req.body);
+  const entry = await income.create(req.user._id, req.user.financeMode, req.body);
   res.status(201).json({ success: true, message: 'Income added', data: { income: entry } });
 });
 
 /** PUT /api/income/:id */
 const updateIncome = asyncHandler(async (req, res) => {
-  const entry = await income.update(req.params.id, req.user._id, req.body);
+  const entry = await income.update(req.params.id, req.user.financeMode, req.user._id, req.body);
   res.json({ success: true, message: 'Income updated', data: { income: entry } });
 });
 
 /** DELETE /api/income/:id */
 const deleteIncome = asyncHandler(async (req, res) => {
-  const id = await income.remove(req.params.id, req.user._id);
+  const id = await income.remove(req.params.id, req.user.financeMode, req.user._id);
   res.json({ success: true, message: 'Income deleted', data: { id } });
 });
 

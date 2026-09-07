@@ -23,5 +23,6 @@ router.post('/:id/payments', debtValidators.addPayment, validate, ctrl.addPaymen
 router.delete('/:id/payments/:paymentId', debtValidators.removePayment, validate, ctrl.deletePayment);
 
 router.post('/:id/settle', debtValidators.settle, validate, ctrl.settleDebt);
+router.post('/:id/cancel', debtValidators.cancel, validate, ctrl.cancelDebt);
 
 module.exports = router;

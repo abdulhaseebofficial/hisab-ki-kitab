@@ -7,7 +7,13 @@ import Textarea from '../../../shared/components/ui/Textarea';
 import Button from '../../../shared/components/ui/Button';
 import Modal from '../../../shared/components/ui/Modal';
 import useCategories from '../../../shared/hooks/useCategories';
+import useT from '../../../shared/i18n/I18nProvider';
+// Default import: the contracts package is CommonJS, and Rollup cannot prove a
+// named export exists on it at build time.
+import catalogue from '@hisabkikitab/contracts/catalogue';
 import { cn, currencySymbol } from '../../../shared/utils/format';
+
+const PURPOSES = catalogue.idsOf('udhaarPurpose');
 
 const schema = z.object({
   kind: z.enum(['BORROWED', 'LENT']),
@@ -19,8 +25,16 @@ const schema = z.object({
   dueDate: z.string().optional(),
   personContact: z.string().max(120).optional(),
   category: z.string().optional(),
+  purpose: z.string().max(300, 'Keep it under 300 characters').optional(),
+  purposeCategory: z.string().optional(),
   note: z.string().max(500).optional(),
-});
+})
+  // "Other" is not a reason. Whoever files a debt under it has to say what it
+  // actually was, or the record means nothing when they come back to it.
+  .refine(
+    (v) => !catalogue.listRequiresNote('udhaarPurpose', v.purposeCategory) || Boolean((v.purpose || '').trim()),
+    { path: ['purpose'], message: 'Please say a little more' }
+  );
 
 /** yyyy-mm-dd, which is what a date input wants. */
 const asDateInput = (value) => (value ? new Date(value).toISOString().slice(0, 10) : '');
@@ -55,33 +69,38 @@ export default function DebtForm({ open, onClose, onSubmit, debt = null, currenc
       dueDate: asDateInput(debt?.dueDate),
       personContact: debt?.personContact || '',
       category: debt?.category || '',
+      purpose: debt?.purpose || '',
+      purposeCategory: debt?.purposeCategory || '',
       note: debt?.note || '',
     },
   });
 
   const kind = watch('kind');
+  const { t, language } = useT();
 
   const submit = (values) =>
     onSubmit({
       ...values,
       dueDate: values.dueDate || null,
       category: values.category || null,
+      purpose: values.purpose || null,
+      purposeCategory: values.purposeCategory || null,
     });
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? 'Edit this record' : 'Add to your udhaar'}
+      title={editing ? t('udhaar.editRecord') : t('udhaar.addToUdhaar')}
       size="md"
     >
       <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
         <fieldset>
-          <legend className="hw-label mb-2">Which way round?</legend>
+          <legend className="hw-label mb-2">{t('udhaar.whichWay')}</legend>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { value: 'BORROWED', label: 'I borrowed money', hint: 'I have to pay it back' },
-              { value: 'LENT', label: 'I lent money', hint: 'I have to get it back' },
+              { value: 'BORROWED', label: t('udhaar.borrowedOption'), hint: t('udhaar.borrowedHint') },
+              { value: 'LENT', label: t('udhaar.lentOption'), hint: t('udhaar.lentHint') },
             ].map((option) => (
               <button
                 key={option.value}
@@ -109,13 +128,13 @@ export default function DebtForm({ open, onClose, onSubmit, debt = null, currenc
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
-            label={kind === 'BORROWED' ? 'Who lent it to you?' : 'Who did you lend it to?'}
-            placeholder="e.g. Ali from Block C"
+            label={kind === 'BORROWED' ? t('udhaar.whoLentToYou') : t('udhaar.whoDidYouLendTo')}
+            placeholder={t('udhaar.personPlaceholder')}
             error={errors.personName && errors.personName.message}
             {...register('personName')}
           />
           <Input
-            label="Amount"
+            label={t('common.amount')}
             type="number"
             inputMode="decimal"
             step="0.01"
@@ -128,13 +147,13 @@ export default function DebtForm({ open, onClose, onSubmit, debt = null, currenc
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
-            label="When"
+            label={t('udhaar.transactionDate')}
             type="date"
             error={errors.transactionDate && errors.transactionDate.message}
             {...register('transactionDate')}
           />
           <Input
-            label="Pay back by"
+            label={t('udhaar.dueDate')}
             type="date"
             hint="Optional - we will flag it if it passes"
             {...register('dueDate')}
@@ -143,33 +162,52 @@ export default function DebtForm({ open, onClose, onSubmit, debt = null, currenc
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
-            label="Phone or contact"
-            placeholder="Optional"
+            label={t('udhaar.personContact')}
+            placeholder={t('common.optional')}
             {...register('personContact')}
           />
           <Select
-            label="Category"
+            label={t('common.category')}
             options={[
-              { value: '', label: 'No category' },
+              { value: '', label: t('common.none') },
               ...categories.map((c) => ({ value: c, label: c })),
             ]}
             {...register('category')}
           />
         </div>
 
+        {/* What the money was for. Six months on this is the difference
+            between a record and a name with a number next to it. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Select
+            label={t('udhaar.purposeCategory')}
+            options={[
+              { value: '', label: t('common.none') },
+              ...PURPOSES.map((id) => ({ value: id, label: catalogue.lookup('udhaarPurpose', id, language) })),
+            ]}
+            {...register('purposeCategory')}
+          />
+          <Input
+            label={t('udhaar.purpose')}
+            placeholder={t('common.optional')}
+            error={errors.purpose && errors.purpose.message}
+            {...register('purpose')}
+          />
+        </div>
+
         <Textarea
-          label="Note"
+          label={t('common.note')}
           rows={2}
-          placeholder="Optional - what was it for?"
+          placeholder={t('udhaar.notePlaceholder')}
           {...register('note')}
         />
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" loading={isSubmitting}>
-            {editing ? 'Save changes' : 'Add record'}
+            {editing ? t('udhaar.saveChanges') : t('udhaar.addRecord')}
           </Button>
         </div>
       </form>

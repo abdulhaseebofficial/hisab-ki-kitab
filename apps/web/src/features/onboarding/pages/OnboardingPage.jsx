@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, PartyPopper, Target, Wallet } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Languages, PartyPopper, Target, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../../shared/components/ui/Button';
 import { useAuth } from '../../auth';
@@ -8,11 +8,15 @@ import { getErrorMessage } from '../../../shared/api/client';
 import { GOAL_ICONS } from '../../../shared/utils/constants';
 import onboardingApi from '../api/onboardingApi';
 import WizardHeader from '../components/WizardHeader';
+import SetupStep from '../components/SetupStep';
 import MoneyStep from '../components/MoneyStep';
 import PlaceStep from '../components/PlaceStep';
 import GoalStep from '../components/GoalStep';
 
 const STEPS = [
+  // Mode and language come first: every later step is worded by them, and the
+  // categories a person will use are decided here.
+  { key: 'setup', title: 'How you keep your books', icon: Languages, Component: SetupStep },
   { key: 'income', title: 'Your monthly money', icon: Wallet, Component: MoneyStep },
   { key: 'place', title: 'Where you study', icon: Check, Component: PlaceStep },
   { key: 'goal', title: 'Your first goal', icon: Target, Component: GoalStep },
@@ -33,6 +37,8 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
+    financeMode: (user && user.financeMode) || 'student',
+    language: (user && user.language) || 'en',
     monthlyIncome: '',
     currency: user && user.currency ? user.currency : 'INR',
     university: '',
@@ -42,17 +48,32 @@ export default function Onboarding() {
     goalIcon: GOAL_ICONS[0],
   });
 
-  const set = (patch) => setForm((current) => ({ ...current, ...patch }));
+  const set = (patch) => {
+    setForm((current) => ({ ...current, ...patch }));
+
+    // The language is the one answer that has to take effect while the wizard
+    // is still open, so it is saved on the spot rather than at the end.
+    if (patch.language && patch.language !== form.language) {
+      onboardingApi
+        .setLanguage(patch.language)
+        .then(updateUser)
+        .catch(() => {
+          // Not worth interrupting setup for: the final save carries it too.
+        });
+    }
+  };
 
   const finish = async (skipGoal = false) => {
     if (!form.monthlyIncome || Number(form.monthlyIncome) < 0) {
-      setStep(0);
+      setStep(STEPS.findIndex((s) => s.key === 'income'));
       return toast.error('Enter your monthly pocket money first');
     }
 
     setSaving(true);
     try {
       const payload = {
+        financeMode: form.financeMode,
+        language: form.language,
         monthlyIncome: Number(form.monthlyIncome),
         currency: form.currency,
         university: form.university,
@@ -80,7 +101,7 @@ export default function Onboarding() {
   };
 
   const goForward = () => {
-    if (step === 0 && !form.monthlyIncome) {
+    if (STEPS[step].key === 'income' && !form.monthlyIncome) {
       return toast.error('Enter your monthly pocket money to continue');
     }
     setStep((current) => current + 1);

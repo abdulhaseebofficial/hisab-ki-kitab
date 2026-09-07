@@ -27,10 +27,19 @@ const escapeLike = (input) => String(input).replace(/[\\%_]/g, (ch) => `\\${ch}`
  * Returns the SQL fragment (without the WHERE keyword), the values, and the
  * next free placeholder number so the caller can append LIMIT/OFFSET.
  */
-const buildWhere = (userId, q = {}) => {
-  const clauses = ['user_id = $1'];
-  const values = [userId];
-  let n = 2;
+/**
+ * The WHERE every expense query starts from.
+ *
+ * Two clauses, always, before anything the caller asked for: whose row it is,
+ * and which life it belongs to. A household gas bill must not appear in a
+ * student's month, and a filter combination must not be able to drop either
+ * one - which is why they are clauses 0 and 1 rather than something appended
+ * later.
+ */
+const buildWhere = (userId, financeMode, q = {}) => {
+  const clauses = ['user_id = $1', 'finance_mode = $2'];
+  const values = [userId, financeMode];
+  let n = 3;
 
   const { from, to, category, paymentMethod, minAmount, maxAmount, search, isRecurring } = q;
 
@@ -85,13 +94,13 @@ const buildWhere = (userId, q = {}) => {
  * One page of expenses, the count of the whole filtered set, and its total -
  * so the UI can show "total for this filter" without a second round trip.
  */
-const list = async (userId, q = {}) => {
+const list = async (userId, financeMode, q = {}) => {
   const page = Math.max(1, parseInt(q.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(q.limit, 10) || 20));
   const sortColumn = SORT_COLUMNS[q.sortBy] || 'date';
   const direction = q.order === 'asc' ? 'ASC' : 'DESC';
 
-  const { where, values, next } = buildWhere(userId, q);
+  const { where, values, next } = buildWhere(userId, financeMode, q);
 
   const [items, summary] = await Promise.all([
     query(
@@ -124,21 +133,25 @@ const list = async (userId, q = {}) => {
 };
 
 /** One expense, scoped to its owner so another student's id reads as missing. */
-const findById = async (id, userId) => {
+const findById = async (id, financeMode, userId) => {
   if (!isUuid(id)) return null;
-  const row = await queryOne(`SELECT * FROM expenses WHERE id = $1 AND user_id = $2`, [id, userId]);
+  const row = await queryOne(
+    `SELECT * FROM expenses WHERE id = $1 AND user_id = $2 AND finance_mode = $3`,
+    [id, userId, financeMode]
+  );
   return toApi(row);
 };
 
 const create = async (userId, data) => {
   const row = await queryOne(
     `INSERT INTO expenses
-       (user_id, amount, category, description, payment_method, date,
+       (user_id, finance_mode, amount, category, description, payment_method, date,
         is_recurring, recurring_frequency, next_run_at, generated_from)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
     [
       userId,
+      data.financeMode,
       data.amount,
       data.category,
       data.description || '',
@@ -153,7 +166,7 @@ const create = async (userId, data) => {
   return toApi(row);
 };
 
-const update = async (id, userId, patch) => {
+const update = async (id, financeMode, userId, patch) => {
   const columns = {
     amount: patch.amount,
     category: patch.category,
@@ -170,45 +183,48 @@ const update = async (id, userId, patch) => {
 
   const row = await queryOne(
     `UPDATE expenses SET ${fragment}, updated_at = now()
-      WHERE id = $${next} AND user_id = $${next + 1} RETURNING *`,
-    [...values, id, userId]
+      WHERE id = $${next} AND user_id = $${next + 1} AND finance_mode = $${next + 2}
+      RETURNING *`,
+    [...values, id, userId, financeMode]
   );
   return toApi(row);
 };
 
-const remove = async (id, userId) => {
+const remove = async (id, financeMode, userId) => {
   if (!isUuid(id)) return false;
-  const rows = await query(`DELETE FROM expenses WHERE id = $1 AND user_id = $2 RETURNING id`, [
+  const rows = await query(
+    `DELETE FROM expenses WHERE id = $1 AND user_id = $2 AND finance_mode = $3 RETURNING id`, [
     id,
     userId,
+    financeMode,
   ]);
   return rows.length > 0;
 };
 
 /** Every expense this student has, for the "download everything" export. */
-const listAllForUser = async (userId) => {
+const listAllForUser = async (userId, financeMode) => {
   const rows = await query(
-    `SELECT * FROM expenses WHERE user_id = $1 ORDER BY date DESC, id DESC`,
-    [userId]
+    `SELECT * FROM expenses WHERE user_id = $1 AND finance_mode = $2 ORDER BY date DESC, id DESC`,
+    [userId, financeMode]
   );
   return toApiList(rows);
 };
 
 /** Every expense in a date range, oldest first - the report export. */
-const listForRange = async (userId, from, to) => {
+const listForRange = async (userId, financeMode, from, to) => {
   const rows = await query(
-    `SELECT * FROM expenses WHERE user_id = $1 AND date >= $2 AND date <= $3
+    `SELECT * FROM expenses WHERE user_id = $1 AND finance_mode = $4 AND date >= $2 AND date <= $3
       ORDER BY date, id`,
-    [userId, from, to]
+    [userId, from, to, financeMode]
   );
   return toApiList(rows);
 };
 
 /** How many expenses still use a category - blocks deleting one in use. */
-const countByCategory = async (userId, category) => {
+const countByCategory = async (userId, financeMode, category) => {
   const row = await queryOne(
-    `SELECT count(*)::bigint AS n FROM expenses WHERE user_id = $1 AND category = $2`,
-    [userId, category]
+    `SELECT count(*)::bigint AS n FROM expenses WHERE user_id = $1 AND category = $2 AND finance_mode = $3`,
+    [userId, category, financeMode]
   );
   return Number(row.n);
 };
@@ -238,6 +254,18 @@ const setNextRunAt = async (id, nextRunAt) => {
   ]);
 };
 
+/*
+ * The recurring sweep and the reminder queries below are deliberately NOT
+ * mode-scoped.
+ *
+ * They are the system acting on a person's behalf while nobody is looking at a
+ * screen, so there is no "active mode" to speak of. A household electricity
+ * bill that repeats every month must still be created in January whether or not
+ * its owner last happened to be looking at their student records. Each row it
+ * creates inherits the mode of the template it came from, which is what keeps
+ * the isolation intact.
+ */
+
 /** Everyone with a template that has come due, for the nightly sweep. */
 const userIdsWithDue = async () => {
   const rows = await query(
@@ -253,9 +281,12 @@ const createMany = async (clones) => {
 
   const values = [];
   const tuples = clones.map((c, i) => {
-    const base = i * 8;
+    const base = i * 9;
     values.push(
       c.userId,
+      // The clone belongs to the same life as the template it came from, which
+      // is what keeps a repeating household bill out of a student's month.
+      c.financeMode,
       c.amount,
       c.category,
       c.description || '',
@@ -264,12 +295,12 @@ const createMany = async (clones) => {
       false,
       c.generatedFrom || null
     );
-    return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8})`;
+    return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9})`;
   });
 
   const rows = await query(
     `INSERT INTO expenses
-       (user_id, amount, category, description, payment_method, date, is_recurring, generated_from)
+       (user_id, finance_mode, amount, category, description, payment_method, date, is_recurring, generated_from)
      VALUES ${tuples.join(', ')} RETURNING id`,
     values
   );
@@ -278,7 +309,14 @@ const createMany = async (clones) => {
 
 /* ----------------------------- alert rules -------------------------- */
 
-/** How many expenses this student logged since `since` - drives the nudge. */
+/**
+ * How many expenses this person logged since `since` - drives the nudge.
+ *
+ * Deliberately spans BOTH finance modes. The question this answers is "have
+ * they been using the app at all", and someone who spent the week logging
+ * household bills has. Scoping it to the active mode would nudge them for
+ * neglecting a set of books they had simply switched away from.
+ */
 const countCreatedSince = async (userId, since) => {
   const row = await queryOne(
     `SELECT count(*)::bigint AS n FROM expenses WHERE user_id = $1 AND created_at >= $2`,

@@ -22,12 +22,24 @@ const budgets = require('../budgets/budgets.service');
 const advisor = require('../advisor/advisor.service');
 const ApiError = require('../../shared/errors/ApiError');
 const { DEFAULT_GOAL_ICON } = require('../../shared/constants');
-const { allCategories, DEFAULT_CATEGORIES } = require('../../shared/categories');
+const { allCategories, modeOf } = require('../../shared/categories');
+const { MODES, categoryIdsFor, allKnownCategoryIds } = require('@hisabkikitab/contracts/catalogue');
 
 const EXPORT_CHAT_LIMIT = 1000;
 
 /** The only profile fields a student is allowed to set directly. */
-const EDITABLE = ['name', 'monthlyIncome', 'currency', 'university', 'hostelName', 'theme'];
+const EDITABLE = [
+  'name',
+  'monthlyIncome',
+  'currency',
+  'university',
+  'hostelName',
+  'theme',
+  // Which set of books is open, and which language it reads in. Both are
+  // validated against the catalogue allowlists before they get here.
+  'financeMode',
+  'language',
+];
 
 const toPublic = usersRepo.toPublicUser;
 
@@ -48,9 +60,14 @@ const updateProfile = async (userId, body) => {
  * optional first goal so the student lands on a dashboard with something on it.
  */
 const completeOnboarding = async (userId, body) => {
-  const { monthlyIncome, currency, university, hostelName, goal } = body;
+  const { financeMode, language, monthlyIncome, currency, university, hostelName, goal } = body;
 
   const user = await usersRepo.updateProfile(userId, {
+    // Asked first in the wizard, because everything else is worded by them.
+    // Undefined rather than a default: not sending them must leave whatever
+    // the account already has, which is what the old wizard relied on.
+    financeMode: financeMode || undefined,
+    language: language || undefined,
     monthlyIncome: monthlyIncome || 0,
     currency: currency || undefined,
     university: university === undefined ? undefined : university,
@@ -73,8 +90,17 @@ const completeOnboarding = async (userId, body) => {
 
 /* ---------------------------- categories ---------------------------- */
 
+/**
+ * What this person can file an expense under right now.
+ *
+ * `defaults` is their current mode's list - a student is not offered a gas
+ * bill - while `custom` is theirs in both modes, because they typed it.
+ * `financeMode` is echoed back so the caller can label the list without
+ * guessing which one it asked for.
+ */
 const listCategories = (user) => ({
-  defaults: DEFAULT_CATEGORIES,
+  financeMode: modeOf(user),
+  defaults: categoryIdsFor('expense', modeOf(user)),
   custom: user.customCategories,
   all: allCategories(user),
 });
@@ -83,8 +109,11 @@ const addCategory = async (user, rawName) => {
   const name = String(rawName || '').trim();
   if (!name) throw ApiError.badRequest('Category name is required');
 
-  // Case-insensitive, so "travel" cannot sit beside the built-in "Travel".
-  const existing = allCategories(user).map((c) => c.toLowerCase());
+  // Case-insensitive and across BOTH modes, so "travel" cannot sit beside the
+  // built-in "Travel" - and a custom category invented in student mode does not
+  // reappear as a duplicate the day the person switches to householder.
+  const existing = [...allKnownCategoryIds(), ...(user.customCategories || [])]
+    .map((c) => c.trim().toLowerCase());
   if (existing.includes(name.toLowerCase())) {
     throw ApiError.conflict('That category already exists');
   }
@@ -103,11 +132,13 @@ const addCategory = async (user, rawName) => {
 const removeCategory = async (user, rawName) => {
   const name = decodeURIComponent(rawName);
 
-  if (DEFAULT_CATEGORIES.includes(name)) {
+  // Built-in in EITHER mode: a student must not be able to delete a household
+  // category just because it is not on their own list today.
+  if (allKnownCategoryIds().includes(name)) {
     throw ApiError.badRequest('Built-in categories cannot be removed');
   }
 
-  const inUse = await expenses.countByCategory(user._id, name);
+  const inUse = await expenses.countByCategory(user._id, modeOf(user), name);
   if (inUse > 0) {
     throw ApiError.badRequest(
       `${inUse} expense(s) still use "${name}". Move them to another category first.`
@@ -123,25 +154,49 @@ const removeCategory = async (user, rawName) => {
 
 /* ------------------------------ account ----------------------------- */
 
-/** Everything this student has, for a "download all my data" request. */
+/**
+ * Everything this person has, for a "download all my data" request.
+ *
+ * BOTH modes, deliberately. Every other read in the app is scoped to whichever
+ * set of books is currently open, and that is right - but a file that calls
+ * itself everything and quietly omits the half the person was not looking at
+ * is a false answer to a data request. Someone exporting before deleting their
+ * account would lose records they were never shown.
+ *
+ * Each row already carries its own `financeMode`, so the two sets stay
+ * distinguishable in the file without being split into separate sections.
+ */
 const exportEverything = async (user) => {
   // Named apart from the modules they come from: destructuring straight into
   // `expenses` and friends would shadow the imports the calls themselves use.
-  const [allExpenses, allIncome, allGoals, allBudgets, chat] = await Promise.all([
-    expenses.listAllForUser(user._id),
-    income.listAllForUser(user._id),
+  const perMode = await Promise.all(
+    MODES.map(async (mode) => {
+      const [modeExpenses, modeIncome, modeBudgets] = await Promise.all([
+        expenses.listAllForUser(user._id, mode),
+        income.listAllForUser(user._id, mode),
+        budgets.listAllForUser(user._id, mode),
+      ]);
+      return { modeExpenses, modeIncome, modeBudgets };
+    })
+  );
+
+  const [allGoals, chat] = await Promise.all([
     goals.listAllForUser(user._id),
-    budgets.listAllForUser(user._id),
     advisor.exportChat(user._id, EXPORT_CHAT_LIMIT),
   ]);
 
+  const gather = (key) => perMode.flatMap((set) => set[key]);
+
   return {
     exportedAt: new Date().toISOString(),
+    // Says plainly what the file covers, so nobody has to infer it from the
+    // rows or assume it matches the mode they happened to be in.
+    financeModes: [...MODES],
     profile: toPublic(user),
-    expenses: allExpenses,
-    incomes: allIncome,
+    expenses: gather('modeExpenses'),
+    incomes: gather('modeIncome'),
     goals: allGoals,
-    budgets: allBudgets,
+    budgets: gather('modeBudgets'),
     aiConversation: chat,
   };
 };

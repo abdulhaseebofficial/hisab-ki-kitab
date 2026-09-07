@@ -18,34 +18,34 @@ const { query, queryOne } = require('../../infrastructure/database/pool');
 const { toApiList } = require('../../infrastructure/database/rows');
 
 /** Total expenses grouped by category, biggest first. */
-const categoryTotals = async (userId, from, to) => {
+const categoryTotals = async (userId, financeMode, from, to) => {
   const rows = await query(
     `SELECT category AS _id, sum(amount) AS total, count(*)::bigint AS count
        FROM expenses
-      WHERE user_id = $1 AND date >= $2 AND date <= $3
+      WHERE user_id = $1 AND finance_mode = $4 AND date >= $2 AND date <= $3
       GROUP BY category
       ORDER BY total DESC`,
-    [userId, from, to]
+    [userId, from, to, financeMode]
   );
   return rows.map((r) => ({ _id: r._id, total: Number(r.total), count: Number(r.count) }));
 };
 
 /** Total expenses for a date range. */
-const totalSpent = async (userId, from, to) => {
+const totalSpent = async (userId, financeMode, from, to) => {
   const row = await queryOne(
     `SELECT COALESCE(sum(amount), 0) AS total FROM expenses
-      WHERE user_id = $1 AND date >= $2 AND date <= $3`,
-    [userId, from, to]
+      WHERE user_id = $1 AND finance_mode = $4 AND date >= $2 AND date <= $3`,
+    [userId, from, to, financeMode]
   );
   return Number(row.total);
 };
 
 /** Total logged income for a date range. */
-const totalIncome = async (userId, from, to) => {
+const totalIncome = async (userId, financeMode, from, to) => {
   const row = await queryOne(
     `SELECT COALESCE(sum(amount), 0) AS total FROM income
-      WHERE user_id = $1 AND date >= $2 AND date <= $3`,
-    [userId, from, to]
+      WHERE user_id = $1 AND finance_mode = $4 AND date >= $2 AND date <= $3`,
+    [userId, from, to, financeMode]
   );
   return Number(row.total);
 };
@@ -58,36 +58,36 @@ const totalIncome = async (userId, from, to) => {
  * the server's own UTC offset: shifting the stored instant by it and reading
  * the date off gives exactly what `Date#getDate()` would say in this process.
  */
-const dailyTotals = async (userId, from, to, offsetMinutes) => {
+const dailyTotals = async (userId, financeMode, from, to, offsetMinutes) => {
   const rows = await query(
     `SELECT to_char((date AT TIME ZONE 'UTC') + ($4 || ' minutes')::interval, 'YYYY-MM-DD') AS _id,
             sum(amount) AS total
        FROM expenses
-      WHERE user_id = $1 AND date >= $2 AND date <= $3
+      WHERE user_id = $1 AND finance_mode = $5 AND date >= $2 AND date <= $3
       GROUP BY 1
       ORDER BY 1`,
-    [userId, from, to, String(offsetMinutes)]
+    [userId, from, to, String(offsetMinutes), financeMode]
   );
   return rows.map((r) => ({ _id: r._id, total: Number(r.total) }));
 };
 
 /** How many expenses fall in a range. */
-const countExpenses = async (userId, from, to) => {
+const countExpenses = async (userId, financeMode, from, to) => {
   const row = await queryOne(
     `SELECT count(*)::bigint AS n FROM expenses
-      WHERE user_id = $1 AND date >= $2 AND date <= $3`,
-    [userId, from, to]
+      WHERE user_id = $1 AND finance_mode = $4 AND date >= $2 AND date <= $3`,
+    [userId, from, to, financeMode]
   );
   return Number(row.n);
 };
 
 /** The single biggest expenses in a range. */
-const topExpenses = async (userId, from, to, limit = 5) => {
+const topExpenses = async (userId, financeMode, from, to, limit = 5) => {
   const rows = await query(
     `SELECT id, amount, category, description, date FROM expenses
-      WHERE user_id = $1 AND date >= $2 AND date <= $3
-      ORDER BY amount DESC LIMIT $4`,
-    [userId, from, to, limit]
+      WHERE user_id = $1 AND finance_mode = $4 AND date >= $2 AND date <= $3
+      ORDER BY amount DESC LIMIT $5`,
+    [userId, from, to, financeMode, limit]
   );
   return rows.map((r) => ({
     _id: r.id,
@@ -103,12 +103,12 @@ const topExpenses = async (userId, from, to, limit = 5) => {
  * them beside what was actually spent. Ordered by category to match how the
  * budgets screen lists them.
  */
-const budgetLimitsFor = async (userId, month, year) => {
+const budgetLimitsFor = async (userId, financeMode, month, year) => {
   const rows = await query(
     `SELECT id, user_id, category, "limit", month, year, created_at, updated_at
-       FROM budgets WHERE user_id = $1 AND month = $2 AND year = $3
+       FROM budgets WHERE user_id = $1 AND finance_mode = $4 AND month = $2 AND year = $3
        ORDER BY category`,
-    [userId, month, year]
+    [userId, month, year, financeMode]
   );
   return toApiList(rows);
 };

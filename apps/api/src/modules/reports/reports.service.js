@@ -10,6 +10,7 @@
 const income = require('../income/income.service');
 const expenses = require('../expenses/expenses.service');
 const analytics = require('../analytics/analytics.service');
+const { modeOf } = require('../../shared/categories');
 const { buildSnapshot, MONTH_NAMES } = analytics;
 const {
   currentPeriod,
@@ -63,8 +64,8 @@ const monthly = async (user, query) => {
   const [snapshot, prevSnapshot, biggest, incomeRows] = await Promise.all([
     buildSnapshot(user, period),
     buildSnapshot(user, prev),
-    analytics.topExpenses(user._id, from, to, 1),
-    income.totalsBySource(user._id, from, to),
+    analytics.topExpenses(user._id, modeOf(user), from, to, 1),
+    income.totalsBySource(user._id, modeOf(user), from, to),
   ]);
 
   return {
@@ -113,7 +114,7 @@ const exportData = async (user, query) => {
 
   const [snapshot, rows] = await Promise.all([
     buildSnapshot(user, period),
-    expenses.listForRange(user._id, from, to),
+    expenses.listForRange(user._id, modeOf(user), from, to),
   ]);
 
   return {

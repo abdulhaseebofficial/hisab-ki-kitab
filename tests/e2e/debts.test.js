@@ -303,6 +303,87 @@ const { ok, section, call, report, requireApi, bailIfRateLimited } = require('./
   ok('and it carries what is falling due', Array.isArray(r.data?.data?.debts?.dueSoon),
     `dueSoon=${typeof r.data?.data?.debts?.dueSoon}`);
 
+  section('WHAT THE MONEY WAS FOR');
+
+  // Six months on, "Ali - 5000" tells nobody anything. The purpose is the
+  // difference between a record and a note-to-self that stopped meaning
+  // something.
+  r = await call('POST', '/debts', {
+    kind: 'BORROWED',
+    personName: 'Purpose person',
+    originalAmount: 1200,
+    purpose: 'Hostel fee for March',
+    purposeCategory: 'education',
+  }, token);
+  ok('a record can say what the money was for', r.status === 201, `-> ${r.status}`);
+  ok('the purpose comes back as written', r.data?.data?.debt?.purpose === 'Hostel fee for March',
+    String(r.data?.data?.debt?.purpose));
+  ok('and so does the reason it is filed under',
+    r.data?.data?.debt?.purposeCategory === 'education', String(r.data?.data?.debt?.purposeCategory));
+  const purposeId = r.data?.data?.debt?._id;
+
+  r = await call('POST', '/debts', {
+    kind: 'LENT', personName: 'Bad purpose', originalAmount: 10, purposeCategory: 'holiday-on-mars',
+  }, token);
+  ok('a reason the app does not know is refused', r.status === 400, `-> ${r.status}`);
+
+  // "Other" on its own is the same as no reason at all, so it has to be
+  // written out. This is the requiresNote flag in the catalogue, enforced.
+  r = await call('POST', '/debts', {
+    kind: 'LENT', personName: 'Vague', originalAmount: 10, purposeCategory: 'other',
+  }, token);
+  ok('"other" with nothing written is refused', r.status === 400, `-> ${r.status}`);
+
+  r = await call('POST', '/debts', {
+    kind: 'LENT', personName: 'Explained', originalAmount: 10,
+    purposeCategory: 'other', purpose: 'Lent for a bus ticket home',
+  }, token);
+  ok('"other" with an explanation is accepted', r.status === 201, `-> ${r.status}`);
+  const explainedId = r.data?.data?.debt?._id;
+
+  r = await call('PUT', `/debts/${purposeId}`, { purpose: 'Hostel fee for April' }, token);
+  ok('the purpose can be corrected', r.data?.data?.debt?.purpose === 'Hostel fee for April',
+    String(r.data?.data?.debt?.purpose));
+
+  r = await call('PUT', `/debts/${purposeId}`, { purpose: 'x'.repeat(301) }, token);
+  ok('an essay is refused rather than truncated', r.status === 400, `-> ${r.status}`);
+
+  section('CANCELLING A RECORD, WHICH IS NOT DELETING IT');
+
+  const beforeCancel = (await call('GET', '/debts/summary', undefined, token)).data?.data;
+
+  r = await call('POST', `/debts/${explainedId}/cancel`, { reason: 'They said keep it' }, token);
+  ok('a record can be cancelled', r.status === 200, `-> ${r.status}`);
+  ok('and its status says so', r.data?.data?.debt?.status === 'CANCELLED',
+    String(r.data?.data?.debt?.status));
+
+  r = await call('GET', `/debts/${explainedId}`, undefined, token);
+  ok('the record is still there to read', r.status === 200, `-> ${r.status}`);
+  ok('the reason was kept with it', String(r.data?.data?.debt?.note || '').includes('They said keep it'),
+    JSON.stringify(r.data?.data?.debt?.note));
+  ok('and it did not start the note with a blank line',
+    !String(r.data?.data?.debt?.note || '').startsWith('\n'),
+    JSON.stringify(r.data?.data?.debt?.note));
+
+  const afterCancel = (await call('GET', '/debts/summary', undefined, token)).data?.data;
+  ok('but it stops counting towards what is owed',
+    afterCancel?.receivable === beforeCancel?.receivable - 10,
+    `${beforeCancel?.receivable} -> ${afterCancel?.receivable}`);
+
+  r = await call('POST', `/debts/${explainedId}/cancel`, {}, token);
+  ok('cancelling twice is refused rather than silently repeated', r.status === 400, `-> ${r.status}`);
+
+  // A settled debt is a finished story. Cancelling it would quietly rewrite
+  // what was actually paid.
+  r = await call('POST', '/debts', { kind: 'LENT', personName: 'Settled one', originalAmount: 50 }, token);
+  const settledId = r.data?.data?.debt?._id;
+  await call('POST', `/debts/${settledId}/settle`, {}, token);
+  r = await call('POST', `/debts/${settledId}/cancel`, {}, token);
+  ok('a settled record cannot be cancelled', r.status === 400, `-> ${r.status}`);
+
+  r = await call('POST', `/debts/00000000-0000-4000-8000-000000000000/cancel`, {}, token);
+  ok('cancelling a record that is not there is a 404', r.status === 404, `-> ${r.status}`);
+
   section('DELETING A RECORD');
 
   r = await call('DELETE', `/debts/${lentId}`, undefined, token);

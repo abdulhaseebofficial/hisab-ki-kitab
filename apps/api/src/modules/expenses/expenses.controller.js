@@ -11,13 +11,13 @@ const asyncHandler = require('../../shared/http/asyncHandler');
  * so the UI can show "total for this filter" without a second round trip.
  */
 const listExpenses = asyncHandler(async (req, res) => {
-  const { items, pagination, filteredTotal } = await expenses.list(req.user._id, req.query);
+  const { items, pagination, filteredTotal } = await expenses.list(req.user._id, req.user.financeMode, req.query);
   res.json({ success: true, data: { items, pagination, filteredTotal } });
 });
 
 /** GET /api/expenses/:id */
 const getExpense = asyncHandler(async (req, res) => {
-  const expense = await expenses.getById(req.params.id, req.user._id);
+  const expense = await expenses.getById(req.params.id, req.user.financeMode, req.user._id);
   res.json({ success: true, data: { expense } });
 });
 
@@ -35,7 +35,7 @@ const updateExpense = asyncHandler(async (req, res) => {
 
 /** DELETE /api/expenses/:id */
 const deleteExpense = asyncHandler(async (req, res) => {
-  const id = await expenses.remove(req.params.id, req.user._id);
+  const id = await expenses.remove(req.params.id, req.user.financeMode, req.user._id);
   res.json({ success: true, message: 'Expense deleted', data: { id } });
 });
 

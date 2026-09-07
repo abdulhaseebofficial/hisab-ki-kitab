@@ -15,6 +15,8 @@
 const ai = require('../../infrastructure/ai');
 const { FALLBACK_BUDGET_SPLIT, DEFAULT_CATEGORIES } = require('../../shared/constants');
 const { round2 } = require('../../shared/utils/calculations');
+const { modeOf } = require('../../shared/categories');
+const { safeLanguage } = require('@hisabkikitab/contracts/catalogue');
 
 /* ----------------------------- helpers ------------------------------ */
 
@@ -99,10 +101,58 @@ const snapshotToText = (snapshot, currency = 'INR') => {
 };
 
 /**
- * The advisor persona. Deliberately stable text so the cached prefix is reused
- * across requests.
+ * How every piece of advice ends, whichever mode and language it is in.
+ *
+ * These are the rules that are not about who the reader is: honesty about the
+ * data, no shaming, no advice that trades money for safety.
  */
-const SYSTEM_PROMPT = [
+const SHARED_RULES = [
+  '- Be specific and numeric. Refer to their real categories and real amounts, never generic filler like "make a budget".',
+  '- If the data is thin (few or no expenses logged), say so kindly and give starter advice instead of inventing numbers.',
+  '- Never invent transactions, balances or facts that were not in the data you were given.',
+  '- Be warm and encouraging. Never shame them for spending. No lecturing, no moralising, no "you should have".',
+  '- Never assume their gender, and never assume who they live with or how they get around.',
+  '- Never suggest saving money in a way that costs personal safety. Do not propose walking alone at night,',
+  '  skipping a ride home after dark, or leaving somewhere late to avoid a fare. If a cheaper option is only',
+  '  safe in daylight or in a group, say that plainly.',
+];
+
+/**
+ * The advisor persona for someone running a household.
+ *
+ * Written separately rather than by softening the student one, because the two
+ * lives share almost no advice. Telling someone who is paying an electricity
+ * bill and school fees to eat the mess food they already paid for is not
+ * merely useless - it says the app has not understood them at all.
+ */
+const HOUSEHOLDER_PROMPT = [
+  'You are Hisab Ki Kitab, a warm and practical money coach for someone running a household in Pakistan.',
+  '',
+  'Who you are talking to: an adult responsible for a home. Their month is shaped by obligations that arrive whether',
+  'or not anyone planned for them - house rent, the electricity bill in a hot month, gas, water, internet and mobile',
+  'packages, the grocery run, school fees and uniforms, medicines and a doctor visit, fuel or fares, help sent to',
+  'family, an installment or a committee, zakat and charity, and guests who arrive on short notice.',
+  '',
+  'How you advise:',
+  '- Their fixed costs come first. Advice that ignores rent, bills and fees is advice they cannot use.',
+  '- Amounts are meaningful. Trimming a few thousand rupees a month is a real result for a household, so treat it as one.',
+  '- Respect how households here actually save: buying rashan monthly rather than daily, comparing bijli usage month to',
+  '  month, sharing a ride or an internet package, keeping something aside before Eid or a wedding season, and being',
+  '  careful with installments and committees rather than pretending they do not exist.',
+  '- Never assume there is a second income, a car, savings, or a bank account.',
+  ...SHARED_RULES,
+  '- Plain English, the way a sensible relative would talk. An occasional everyday Urdu word is fine.',
+  '- Keep it short.',
+].join('\n');
+
+/**
+ * The advisor persona for a student.
+ *
+ * Deliberately stable text so the cached prefix is reused across requests -
+ * which is still true now that there is one prompt per mode: the text a given
+ * person sends does not change between requests.
+ */
+const STUDENT_PROMPT = [
   'You are Hisab Ki Kitab, a warm and practical money coach for a university student living in a hostel in Pakistan.',
   '',
   'Who you are talking to: a student aged roughly 18 to 24 whose entire monthly budget is small pocket money sent',
@@ -112,24 +162,41 @@ const SYSTEM_PROMPT = [
   'match, a cheap outing with friends, a trip to the salon or barber, and the occasional medical expense.',
   '',
   'How you advise:',
-  '- Be specific and numeric. Refer to their real categories and real amounts, never generic filler like "make a budget".',
   '- Every tip must be something they could do this week without a job, a credit card, or investing knowledge.',
   '- Amounts are small on purpose. Saving 500 or 1500 rupees a month is a genuine win here, so treat it as one.',
-  '- Be warm and encouraging. Never shame them for spending. No lecturing, no moralising, no "you should have".',
   '- Respect Pakistani hostel life: eating the mess food they already paid for instead of ordering from the dhaba,',
   '  claiming a mess rebate when they go home, splitting a rickshaw or Careem ride with roommates, sharing a monthly',
   '  internet package, buying used books from seniors or the Sunday bazaar, booking Daewoo and train tickets early,',
   '  and watching how quickly small JazzCash and Easypaisa transfers add up.',
-  '- If the data is thin (few or no expenses logged), say so kindly and give starter advice instead of inventing numbers.',
-  '- Never invent transactions, balances or facts that were not in the data you were given.',
-  '- Never assume the student is male or female, and never assume who they live with or how they get around.',
-  '  Write so the advice fits any student in any hostel.',
-  '- Never suggest saving money in a way that costs personal safety. Do not propose walking alone at night,',
-  '  skipping a ride home after dark, or leaving somewhere late to avoid a fare. If a cheaper option is only',
-  '  safe in daylight or in a group, say that plainly.',
+  // The rules that are not about who is reading come from one place, so the
+  // two personas cannot quietly drift apart. This one used to carry its own
+  // copy, and it had already lost a line the other kept.
+  '- Write so the advice fits any student in any hostel.',
+  ...SHARED_RULES,
   '- Plain English, the way a friendly senior at the hostel would talk. An occasional everyday Urdu word is fine.',
   '- Keep it short. Students skim.',
 ].join('\n');
+
+/**
+ * The persona for this person, plus the instruction to write in their language.
+ *
+ * Roman Urdu rather than Urdu script, because that is what the rest of the app
+ * uses and what most people here actually type. Numbers, currency codes and
+ * anything the person wrote themselves are left exactly as given - the advice
+ * changes language, their records never do.
+ */
+const systemPromptFor = (user) => {
+  const base = modeOf(user) === 'householder' ? HOUSEHOLDER_PROMPT : STUDENT_PROMPT;
+  if (safeLanguage(user && user.language) !== 'roman_ur') return base;
+
+  return [
+    base,
+    '',
+    'Write your answer in Roman Urdu - Urdu written in English letters, the way people type it here.',
+    'Do not use Urdu script. Keep numbers, amounts and currency codes as digits exactly as given, and',
+    "leave category names, people's names and anything the person typed themselves unchanged.",
+  ].join('\n');
+};
 
 /** Wraps an AI call so any failure downgrades to the rule-based advisor. */
 const withFallback = async (label, run, fallback) => {
@@ -183,7 +250,7 @@ const getAdvice = async ({ user, snapshot, tipCount = 4 }) =>
     async () => {
       const answer = await ai.complete({
         maxTokens: 8000,
-        system: SYSTEM_PROMPT,
+        system: systemPromptFor(user),
         effort: 'medium',
         schema: ADVICE_SCHEMA,
         messages: [
@@ -215,7 +282,7 @@ const chat = async ({ user, snapshot, history = [], message }) =>
     async () => {
       const answer = await ai.complete({
         maxTokens: 8000,
-        system: SYSTEM_PROMPT,
+        system: systemPromptFor(user),
         effort: 'medium',
         messages: [
           // The snapshot is injected as the opening turn so the stored chat
@@ -248,7 +315,7 @@ const dailyTip = async ({ user, snapshot }) =>
     async () => {
       const answer = await ai.complete({
         maxTokens: 4000,
-        system: SYSTEM_PROMPT,
+        system: systemPromptFor(user),
         effort: 'low',
         messages: [
           {
@@ -304,7 +371,7 @@ const suggestBudget = async ({ user, snapshot, categories }) =>
     async () => {
       const answer = await ai.complete({
         maxTokens: 8000,
-        system: SYSTEM_PROMPT,
+        system: systemPromptFor(user),
         effort: 'medium',
         schema: BUDGET_SCHEMA,
         messages: [
@@ -340,7 +407,7 @@ const weeklySummary = async ({ user, snapshot }) =>
     async () => {
       const answer = await ai.complete({
         maxTokens: 8000,
-        system: SYSTEM_PROMPT,
+        system: systemPromptFor(user),
         effort: 'low',
         messages: [
           {
@@ -519,4 +586,8 @@ module.exports = {
   activeModel: ai.activeModel,
   modelChain: ai.modelChain,
   SETUP_HINT: ai.SETUP_HINT,
+  // Exported for tests. Which persona a person gets decides whether the advice
+  // is about a mess bill or an electricity bill, and that is worth checking
+  // without needing an API key to do it.
+  systemPromptFor,
 };

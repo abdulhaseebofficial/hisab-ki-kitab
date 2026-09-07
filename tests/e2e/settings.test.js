@@ -111,6 +111,27 @@ const { ok, section, heading, call, report, requireApi, bailIfRateLimited, curre
   ok('the export contains the expenses', /QA gym fee/.test(dumpStr), 'test expense found in the dump');
   ok('the export does NOT contain the password hash', !/\$2[aby]\$/.test(dumpStr), 'no bcrypt hash leaked');
 
+  // A file that calls itself everything has to be everything. Someone
+  // exporting before deleting their account must not lose the half of their
+  // records that happened to be in the other mode.
+  {
+    let x = await call('PUT', '/profile', { financeMode: 'householder' }, token);
+    ok('switch to the other mode to leave a record there', x.status === 200, `-> ${x.status}`);
+    x = await call('POST', '/expenses', { amount: 4321, category: 'electricity_bill', date: new Date().toISOString(), description: 'QA bijli bill' }, token);
+    ok('a household expense is logged', x.status === 201, `-> ${x.status}`);
+
+    x = await call('PUT', '/profile', { financeMode: 'student' }, token);
+    ok('and back to student mode', x.status === 200, `-> ${x.status}`);
+
+    x = await call('GET', '/profile/export', undefined, token);
+    const both = JSON.stringify(x.data?.data || x.data || '');
+    ok('the export carries the student records', /QA gym fee/.test(both), 'student expense present');
+    ok('and the household ones the person is not currently looking at',
+      /QA bijli bill/.test(both), 'household expense present');
+    ok('and says which modes it covers',
+      /"financeModes"/.test(both) && /householder/.test(both), 'financeModes declared');
+  }
+
   section('Change password');
   r = await call('PUT', '/auth/change-password', { currentPassword: 'wrong-one', newPassword: 'NewPass456!' }, token);
   ok('a wrong current password is rejected', r.status === 401 || r.status === 400, `-> ${r.status}`);
@@ -139,6 +160,97 @@ const { ok, section, heading, call, report, requireApi, bailIfRateLimited, curre
   r = await call('POST', '/auth/login', { email, password: 'NewPass456!' });
   ok('the new password works', r.status === 200, `-> ${r.status}`);
   const freshToken = r.data?.data?.accessToken;
+
+  heading('MODE AND LANGUAGE');
+
+  section('Onboarding asks first, and the answer has to survive');
+  {
+    // The wizard collects the mode and the language before anything else. If
+    // the endpoint drops them, the person answers two questions for nothing
+    // and lands on a dashboard built for somebody else.
+    const wizardEmail = `wizard${Date.now()}@example.com`;
+    let w = await call('POST', '/auth/register', {
+      acceptTerms: true, name: 'Wizard QA', email: wizardEmail,
+      password: 'TestPass123!', confirmPassword: 'TestPass123!',
+    });
+    const wizardToken = w.data?.data?.accessToken;
+    ok('a second throwaway account for the wizard', w.status === 201 && !!wizardToken, wizardEmail);
+
+    w = await call('POST', '/profile/onboarding', {
+      financeMode: 'householder', language: 'roman_ur', monthlyIncome: 90000, currency: 'PKR',
+    }, wizardToken);
+    ok('onboarding accepts a mode and a language', w.status === 200, `-> ${w.status}`);
+    ok('the mode it was told is the mode it saved',
+      w.data?.data?.user?.financeMode === 'householder', String(w.data?.data?.user?.financeMode));
+    ok('and the language too',
+      w.data?.data?.user?.language === 'roman_ur', String(w.data?.data?.user?.language));
+
+    w = await call('GET', '/auth/me', undefined, wizardToken);
+    ok('both survive a reload', w.data?.data?.user?.financeMode === 'householder'
+      && w.data?.data?.user?.language === 'roman_ur',
+      `${w.data?.data?.user?.financeMode}/${w.data?.data?.user?.language}`);
+
+    // A householder gets the householder categories, not the hostel ones.
+    w = await call('GET', '/profile/categories', undefined, wizardToken);
+    const all = w.data?.data?.all || [];
+    ok('and the categories follow the mode', all.includes('electricity_bill') && !all.includes('Mess/Food'),
+      `${all.length} categories`);
+
+    await call('DELETE', '/profile', { password: 'TestPass123!' }, wizardToken);
+  }
+
+  section('Switching mode keeps both sets of books');
+  {
+    // The promise the confirmation dialog makes: nothing is deleted, the other
+    // side is simply out of view. If this fails, the dialog is lying.
+    let m = await call('POST', '/expenses', { amount: 120, category: 'Mess/Food', date: new Date().toISOString() }, token);
+    ok('an expense is logged in student mode', m.status === 201, `-> ${m.status}`);
+
+    // Earlier sections logged their own expenses on this account, so the test
+    // is that the count comes back unchanged - not that it is one.
+    m = await call('GET', '/expenses', undefined, token);
+    const studentCount = (m.data?.data?.items || []).length;
+
+    m = await call('PUT', '/profile', { financeMode: 'householder' }, token);
+    ok('the mode can be switched', m.status === 200 && m.data?.data?.user?.financeMode === 'householder',
+      String(m.data?.data?.user?.financeMode));
+
+    m = await call('GET', '/expenses', undefined, token);
+    const houseItems = m.data?.data?.items || [];
+    // Earlier sections put a record on the household side too, so the test is
+    // that the student one is not here - not that nothing is.
+    ok('the student expense is out of view',
+      !houseItems.some((e) => Number(e.amount) === 120),
+      `${houseItems.length} household items, none of them the student's`);
+
+    // The strong form: the household total is exactly the household rows.
+    // Anything leaking across from student mode would show up as a difference.
+    const houseSum = houseItems.reduce((total, e) => total + Number(e.amount), 0);
+    m = await call('GET', '/dashboard/summary', undefined, token);
+    ok('and the household total is exactly the household records',
+      Math.abs(Number(m.data?.data?.totals?.spent || 0) - houseSum) < 0.01,
+      `total=${m.data?.data?.totals?.spent} rows=${houseSum}`);
+
+    m = await call('PUT', '/profile', { financeMode: 'student' }, token);
+    ok('switching back is allowed', m.status === 200, `-> ${m.status}`);
+
+    m = await call('GET', '/expenses', undefined, token);
+    ok('and every record is exactly where it was left',
+      (m.data?.data?.items || []).length === studentCount,
+      `${studentCount} before, ${(m.data?.data?.items || []).length} after`);
+    ok('with amounts untouched', m.data?.data?.items?.[0]?.amount === 120,
+      String(m.data?.data?.items?.[0]?.amount));
+  }
+
+  section('Only the modes and languages the app has');
+  r = await call('PUT', '/profile', { financeMode: 'landlord' }, token);
+  ok('an invented mode is refused', r.status === 400, `-> ${r.status}`);
+  r = await call('PUT', '/profile', { language: 'fr' }, token);
+  ok('an unsupported language is refused', r.status === 400, `-> ${r.status}`);
+  r = await call('PUT', '/profile', { language: 'roman_ur' }, token);
+  ok('a supported one is accepted', r.status === 200 && r.data?.data?.user?.language === 'roman_ur',
+    String(r.data?.data?.user?.language));
+  await call('PUT', '/profile', { language: 'en' }, token);
 
   section('Delete account');
   r = await call('DELETE', '/profile', { password: 'wrong-password' }, freshToken);

@@ -14,6 +14,16 @@ const onboardingApi = {
    * Returns `{ user, goal }` - the goal is null when the student skipped it.
    */
   complete: (payload) => profileApi.completeOnboarding(payload),
+
+  /**
+   * Saves the language as soon as it is picked, before the wizard is finished.
+   *
+   * Without this the rest of setup stays in the language the person just said
+   * they do not want, which is a strange thing to do to someone immediately
+   * after asking. It is one small request, and the same profile field the
+   * final save would have written anyway.
+   */
+  setLanguage: (language) => profileApi.update({ language }),
 };
 
 export default onboardingApi;

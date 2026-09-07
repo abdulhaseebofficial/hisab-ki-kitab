@@ -11,7 +11,7 @@
  */
 
 const expensesRepo = require('./expenses.repository');
-const { isOwnCategory } = require('../../shared/categories');
+const { isOwnCategory, isOtherModeCategory, modeOf } = require('../../shared/categories');
 const ApiError = require('../../shared/errors/ApiError');
 const {
   firstRunAfter,
@@ -23,6 +23,11 @@ const DEFAULT_PAYMENT_METHOD = 'Cash';
 const DEFAULT_FREQUENCY = 'monthly';
 
 const assertOwnCategory = (user, category) => {
+  if (isOtherModeCategory(user, category)) {
+    throw ApiError.badRequest(
+      'That category belongs to your other finance mode. Switch modes, or pick one from this list.'
+    );
+  }
   if (!isOwnCategory(user, category)) {
     throw ApiError.badRequest(`"${category}" is not one of your categories`);
   }
@@ -40,14 +45,14 @@ const announce = (user, expense, action) => {
 };
 
 /** Filtered, sorted, paginated, with the sum of the filtered set. */
-const list = async (userId, filters) => {
+const list = async (userId, financeMode, filters) => {
   // Catch recurring bills up first so the list is never stale.
   await materializeForUser(userId);
-  return expensesRepo.list(userId, filters);
+  return expensesRepo.list(userId, financeMode, filters);
 };
 
-const getById = async (id, userId) => {
-  const expense = await expensesRepo.findById(id, userId);
+const getById = async (id, financeMode, userId) => {
+  const expense = await expensesRepo.findById(id, financeMode, userId);
   if (!expense) throw ApiError.notFound('Expense not found');
   return expense;
 };
@@ -69,6 +74,8 @@ const create = async (user, input) => {
   const frequency = recurringFrequency || DEFAULT_FREQUENCY;
 
   const expense = await expensesRepo.create(user._id, {
+    // Whichever life they are recording right now is the one this belongs to.
+    financeMode: modeOf(user),
     amount,
     category,
     description: description || '',
@@ -95,7 +102,7 @@ const EDITABLE = [
 ];
 
 const update = async (id, user, body) => {
-  const existing = await expensesRepo.findById(id, user._id);
+  const existing = await expensesRepo.findById(id, modeOf(user), user._id);
   if (!existing) throw ApiError.notFound('Expense not found');
 
   if (body.category) assertOwnCategory(user, body.category);
@@ -117,13 +124,13 @@ const update = async (id, user, body) => {
     patch.nextRunAt = null;
   }
 
-  const expense = await expensesRepo.update(id, user._id, patch);
+  const expense = await expensesRepo.update(id, modeOf(user), user._id, patch);
   announce(user, expense, 'updated');
   return expense;
 };
 
-const remove = async (id, userId) => {
-  const removed = await expensesRepo.remove(id, userId);
+const remove = async (id, financeMode, userId) => {
+  const removed = await expensesRepo.remove(id, financeMode, userId);
   if (!removed) throw ApiError.notFound('Expense not found');
   return id;
 };
@@ -131,16 +138,18 @@ const remove = async (id, userId) => {
 /* ------------------- for other modules to build on ------------------ */
 
 /** The newest few, without the recurring catch-up the list route does. */
-const listRecent = (userId, limit) => expensesRepo.list(userId, { limit });
+const listRecent = (userId, financeMode, limit) => expensesRepo.list(userId, financeMode, { limit });
 
 /** Everything in a date range, for a report or an export. */
-const listForRange = (userId, from, to) => expensesRepo.listForRange(userId, from, to);
+const listForRange = (userId, financeMode, from, to) =>
+  expensesRepo.listForRange(userId, financeMode, from, to);
 
 /** Every expense this student has, for the data export. */
-const listAllForUser = (userId) => expensesRepo.listAllForUser(userId);
+const listAllForUser = (userId, financeMode) => expensesRepo.listAllForUser(userId, financeMode);
 
 /** How many expenses still use a category, before it can be deleted. */
-const countByCategory = (userId, category) => expensesRepo.countByCategory(userId, category);
+const countByCategory = (userId, financeMode, category) =>
+  expensesRepo.countByCategory(userId, financeMode, category);
 
 /** How many were logged since a moment, for the "you have not logged" nudge. */
 const countCreatedSince = (userId, since) => expensesRepo.countCreatedSince(userId, since);

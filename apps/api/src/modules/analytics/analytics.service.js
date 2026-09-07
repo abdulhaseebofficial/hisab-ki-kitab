@@ -10,6 +10,7 @@
  */
 
 const analytics = require('./analytics.repository');
+const { modeOf } = require('../../shared/categories');
 
 
 const {
@@ -40,22 +41,23 @@ const MONTH_NAMES = [
 const serverOffsetMinutes = () => -new Date().getTimezoneOffset();
 
 /** Total expenses grouped by category for a date range. */
-const categoryTotals = async (userId, from, to) =>
-  shapeCategoryTotals(await analytics.categoryTotals(userId, from, to));
+const categoryTotals = async (userId, financeMode, from, to) =>
+  shapeCategoryTotals(await analytics.categoryTotals(userId, financeMode, from, to));
 
 /** Total expenses for a date range. */
-const totalSpent = async (userId, from, to) => round2(await analytics.totalSpent(userId, from, to));
+const totalSpent = async (userId, financeMode, from, to) =>
+  round2(await analytics.totalSpent(userId, financeMode, from, to));
 
 /** Total logged income for a date range. */
-const totalIncome = async (userId, from, to) =>
-  round2(await analytics.totalIncome(userId, from, to));
+const totalIncome = async (userId, financeMode, from, to) =>
+  round2(await analytics.totalIncome(userId, financeMode, from, to));
 
 /**
  * Day-by-day spend for a range, with zero-filled gaps so the line chart does
  * not jump over days with no spending.
  */
-const dailyTrend = async (userId, from, to) => {
-  const rows = await analytics.dailyTotals(userId, from, to, serverOffsetMinutes());
+const dailyTrend = async (userId, financeMode, from, to) => {
+  const rows = await analytics.dailyTotals(userId, financeMode, from, to, serverOffsetMinutes());
 
   const byDay = Object.fromEntries(rows.map((r) => [r._id, round2(r.total)]));
   const out = [];
@@ -71,12 +73,12 @@ const dailyTrend = async (userId, from, to) => {
 };
 
 /** Budgets for a month, each joined with what has actually been spent. */
-const budgetProgress = async (userId, month, year) => {
+const budgetProgress = async (userId, financeMode, month, year) => {
   const from = startOfMonth(year, month);
   const to = endOfMonth(year, month);
   const [budgets, { byCategory }] = await Promise.all([
-    analytics.budgetLimitsFor(userId, month, year),
-    categoryTotals(userId, from, to),
+    analytics.budgetLimitsFor(userId, financeMode, month, year),
+    categoryTotals(userId, financeMode, from, to),
   ]);
 
   return budgets
@@ -113,17 +115,19 @@ const buildSnapshot = async (user, period = currentPeriod()) => {
   const prev = previousPeriod({ month, year });
   const prevFrom = startOfMonth(prev.year, prev.month);
   const prevTo = endOfMonth(prev.year, prev.month);
+  const mode = modeOf(user);
 
   const [spent, loggedIncome, cats, trend, budgets, goals, previousMonthSpent, expenseCount] =
     await Promise.all([
-      totalSpent(user._id, from, to),
-      totalIncome(user._id, from, to),
-      categoryTotals(user._id, from, to),
-      dailyTrend(user._id, from, to),
-      budgetProgress(user._id, month, year),
+      totalSpent(user._id, mode, from, to),
+      totalIncome(user._id, mode, from, to),
+      categoryTotals(user._id, mode, from, to),
+      dailyTrend(user._id, mode, from, to),
+      budgetProgress(user._id, mode, month, year),
+      // Goals are shared across modes on purpose - see migration 0006.
       analytics.openGoalsFor(user._id, 5),
-      totalSpent(user._id, prevFrom, prevTo),
-      analytics.countExpenses(user._id, from, to),
+      totalSpent(user._id, mode, prevFrom, prevTo),
+      analytics.countExpenses(user._id, mode, from, to),
     ]);
 
   const plannedIncome = round2(user.monthlyIncome || 0);
@@ -180,10 +184,11 @@ const buildWeeklySnapshot = async (user) => {
   from.setDate(from.getDate() - 6);
   from.setHours(0, 0, 0, 0);
 
+  const mode = modeOf(user);
   const [spent, cats, trend] = await Promise.all([
-    totalSpent(user._id, from, to),
-    categoryTotals(user._id, from, to),
-    dailyTrend(user._id, from, to),
+    totalSpent(user._id, mode, from, to),
+    categoryTotals(user._id, mode, from, to),
+    dailyTrend(user._id, mode, from, to),
   ]);
 
   return {
@@ -203,8 +208,8 @@ const buildWeeklySnapshot = async (user) => {
 };
 
 /** The single biggest expense in a range, for the monthly report. */
-const topExpenses = (userId, from, to, limit) =>
-  analytics.topExpenses(userId, from, to, limit);
+const topExpenses = (userId, financeMode, from, to, limit) =>
+  analytics.topExpenses(userId, financeMode, from, to, limit);
 
 module.exports = {
   topExpenses,

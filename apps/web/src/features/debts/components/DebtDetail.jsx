@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarClock, Check, Phone, Pencil, Trash2, Undo2 } from 'lucide-react';
+import { Ban, CalendarClock, Check, Phone, Pencil, Trash2, Undo2 } from 'lucide-react';
 import Modal from '../../../shared/components/ui/Modal';
 import Button from '../../../shared/components/ui/Button';
 import Input from '../../../shared/components/ui/Input';
@@ -7,6 +7,9 @@ import ProgressBar from '../../../shared/components/ui/ProgressBar';
 import EmptyState from '../../../shared/components/ui/EmptyState';
 import { KindBadge, StatusBadge } from './DebtBadges';
 import { progressPercent } from '../utils/debtDisplay';
+import useT from '../../../shared/i18n/I18nProvider';
+// Default import: contracts is CommonJS and Rollup cannot see named exports on it.
+import catalogue from '@hisabkikitab/contracts/catalogue';
 import { cn, formatMoney, formatDate, currencySymbol } from '../../../shared/utils/format';
 
 /**
@@ -27,14 +30,17 @@ export default function DebtDetail({
   onSettle,
   onEdit,
   onDelete,
+  onCancel,
   onRemovePayment,
 }) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const { t, language } = useT();
 
   if (!debt) return null;
 
   const settled = debt.status === 'SETTLED';
+  const cancelled = debt.status === 'CANCELLED';
   const percent = progressPercent(debt);
 
   const submitPayment = async () => {
@@ -111,6 +117,20 @@ export default function DebtDetail({
               </dd>
             </div>
           )}
+          {/* The purpose sits above the note and spans the row: it is the
+              thing that makes the record still mean something months later. */}
+          {(debt.purpose || debt.purposeCategory) && (
+            <div className="sm:col-span-2">
+              <dt className="text-slate-500 dark:text-slate-400">{t('udhaar.purpose')}</dt>
+              <dd className="font-medium text-slate-800 dark:text-slate-200">
+                {debt.purpose}
+                {debt.purpose && debt.purposeCategory ? ' - ' : ''}
+                {debt.purposeCategory
+                  ? catalogue.lookup('udhaarPurpose', debt.purposeCategory, language)
+                  : ''}
+              </dd>
+            </div>
+          )}
           {debt.note && (
             <div className="sm:col-span-2">
               <dt className="text-slate-500 dark:text-slate-400">Note</dt>
@@ -120,7 +140,8 @@ export default function DebtDetail({
         </dl>
 
         {/* Recording a payment */}
-        {!settled && (
+        {/* A cancelled record takes no more payments: it stopped counting. */}
+        {!settled && !cancelled && (
           <div className="hw-card space-y-3 p-4">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               {debt.kind === 'BORROWED' ? 'Record a repayment' : 'Record money received'}
@@ -199,6 +220,15 @@ export default function DebtDetail({
           <Button variant="ghost" icon={Pencil} onClick={onEdit}>
             Edit
           </Button>
+          {/* Cancel sits next to Delete deliberately, so the gentler option is
+              seen first: this one keeps the record and the ledger, and only
+              stops it counting. A settled debt is finished and has nothing to
+              cancel. */}
+          {!settled && !cancelled && (
+            <Button variant="outline" icon={Ban} onClick={onCancel}>
+              Cancel this record
+            </Button>
+          )}
           <Button variant="danger" icon={Trash2} onClick={onDelete}>
             Delete
           </Button>

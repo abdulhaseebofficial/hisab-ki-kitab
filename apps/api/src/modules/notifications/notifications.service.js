@@ -31,7 +31,7 @@ const push = async (userId, { type, title, message, meta = {}, dedupeKey }) =>
 /** Warn once per category per month when a budget crosses 80% and 100%. */
 const checkOverspending = async (user) => {
   const period = currentPeriod();
-  const rows = await budgetProgress(user._id, period.month, period.year);
+  const rows = await budgetProgress(user._id, modeOf(user), period.month, period.year);
   const created = [];
 
   for (const row of rows) {
@@ -147,6 +147,7 @@ const runChecksForUser = async (user) => {
 /* ----------------------------- the tray ----------------------------- */
 
 const ApiError = require('../../shared/errors/ApiError');
+const { modeOf } = require('../../shared/categories');
 
 /** Newest first, with the unread count the bell badge shows. */
 const listForUser = async (userId, { limit, unreadOnly } = {}) => {

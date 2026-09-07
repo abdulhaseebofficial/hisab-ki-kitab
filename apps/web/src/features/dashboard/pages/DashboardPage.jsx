@@ -17,6 +17,7 @@ import { SkeletonStats, SkeletonCard } from '../../../shared/components/ui/Skele
 import StatCard from '../../../shared/components/StatCard';
 import RecentTransactions from '../components/RecentTransactions';
 import GoalsPreview from '../components/GoalsPreview';
+import HouseholdBills from '../components/HouseholdBills';
 import { DebtWidget } from '../../debts';
 import { BudgetRow } from '../../budgets';
 import CategoryPieChart from '../../../shared/components/charts/CategoryPieChart';
@@ -30,6 +31,7 @@ import { formatChange, formatMoney } from '../../../shared/utils/format';
 
 export default function Dashboard() {
   const { user, currency } = useAuth();
+  const householder = user && user.financeMode === 'householder';
   const navigate = useNavigate();
 
   // Adding an expense is the shell's dialog, reached through the same opener
@@ -126,7 +128,11 @@ export default function Dashboard() {
           icon={ArrowUpRight}
           tone="safe"
           footnote={
-            totals.incomeLogged > 0 ? 'From your logged income' : 'Your planned pocket money'
+            totals.incomeLogged > 0
+              ? 'From your logged income'
+              : householder
+                ? 'Your expected household income'
+                : 'Your planned pocket money'
           }
         />
 
@@ -172,6 +178,13 @@ export default function Dashboard() {
           <GoalsPreview goals={goals} currency={currency} onCreate={() => navigate('/goals')} />
 
           <DebtWidget debts={debts} currency={currency} />
+
+          {/* A household's month is mostly committed before it starts, so the
+              fixed costs get their own place. A student's does not, and the
+              card would be an empty box on every dashboard. */}
+          {householder && (
+            <HouseholdBills breakdown={categoryBreakdown} currency={currency} />
+          )}
 
           <Card>
             <CardHeader

@@ -8,7 +8,9 @@
     ".": "./index.js",
     "./vocabulary.json": "./vocabulary.json",
     "./validation": "./validation.js",
-    "./validation.json": "./validation.json"
+    "./validation.json": "./validation.json",
+    "./catalogue": "./catalogue.js",
+    "./catalogue.json": "./catalogue.json"
   },
   "license": "MIT"
 }

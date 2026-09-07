@@ -1,6 +1,7 @@
 import { ArrowDownLeft, ArrowUpRight, Scale, AlertTriangle } from 'lucide-react';
 import StatCard from '../../../shared/components/StatCard';
 import Skeleton from '../../../shared/components/ui/Skeleton';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /**
  * The four figures a student actually wants: what they owe, what they are
@@ -25,43 +26,46 @@ export default function DebtSummaryCards({ summary, currency = 'PKR', loading = 
   const receivable = summary?.receivable || 0;
   const net = summary?.netBalance || 0;
   const overdue = summary?.overdue || 0;
+  const { t } = useT();
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
-        label="You have to pay"
+        label={t('udhaar.summary.payable')}
         value={payable}
         currency={currency}
         icon={ArrowUpRight}
         tone="danger"
-        footnote={payable > 0 ? 'Money you borrowed and still owe' : 'You owe nobody'}
+        footnote={payable > 0 ? t('udhaar.summary.borrowedStillOwed') : t('udhaar.summary.oweNobody')}
       />
       <StatCard
-        label="You have to receive"
+        label={t('udhaar.summary.receivable')}
         value={receivable}
         currency={currency}
         icon={ArrowDownLeft}
         tone="brand"
-        footnote={receivable > 0 ? 'Money you lent and have not got back' : 'Nobody owes you'}
+        footnote={receivable > 0 ? t('udhaar.summary.lentNotBack') : t('udhaar.summary.nobodyOwesYou')}
       />
       <StatCard
-        label="Net balance"
+        label={t('udhaar.summary.net')}
         value={net}
         currency={currency}
         icon={Scale}
         tone={net >= 0 ? 'safe' : 'danger'}
         // Said in words as well as by colour and sign: a negative net balance
         // is not self-explanatory at a glance.
-        footnote={net >= 0 ? 'In your favour' : 'You owe more than you are owed'}
+        footnote={net >= 0 ? t('udhaar.summary.inYourFavour') : t('udhaar.summary.againstYou')}
       />
       <StatCard
-        label="Overdue"
+        label={t('udhaar.summary.overdue')}
         value={overdue}
         currency={currency}
         icon={AlertTriangle}
         tone={overdue > 0 ? 'danger' : 'neutral'}
         footnote={
-          summary?.overdueCount ? `${summary.overdueCount} record(s) past due` : 'Nothing is late'
+          summary?.overdueCount
+            ? t('udhaar.summary.overdueCount', { count: summary.overdueCount })
+            : t('udhaar.summary.nothingLate')
         }
       />
     </div>
