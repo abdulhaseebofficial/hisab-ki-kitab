@@ -1,16 +1,30 @@
 const usersRepo = require('../users/users.service');
 const ApiError = require('../../shared/errors/ApiError');
 const asyncHandler = require('../../shared/http/asyncHandler');
-const { verifyAccessToken } = require('./auth.tokens');
+const { verifyAccessToken, ACCESS_COOKIE } = require('./auth.tokens');
 
 /**
- * Verifies the `Authorization: Bearer <accessToken>` header and attaches the
- * user record to `req.user`. Every route below /api that touches user data
- * must sit behind this.
+ * Authenticates the request and attaches the user to `req.user`. Every route
+ * below /api that touches user data must sit behind this.
+ *
+ * Two ways in, in this order:
+ *
+ *   Authorization: Bearer <token>   what the API contract has always accepted,
+ *                                   and what anything that is not a browser
+ *                                   uses - scripts, the test suites, curl
+ *
+ *   hw_access cookie                the browser's way, set httpOnly so no
+ *                                   injected script can read the token
+ *
+ * The header is checked first so an explicit credential always wins over an
+ * ambient one: a script passing a token must not silently act as whoever the
+ * browser happens to be signed in as.
  */
 const protect = asyncHandler(async (req, _res, next) => {
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
+  const fromHeader = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
+  const fromCookie = req.cookies ? req.cookies[ACCESS_COOKIE] : null;
+  const token = fromHeader || fromCookie || null;
 
   if (!token) throw ApiError.unauthorized('No token provided. Please log in.');
 

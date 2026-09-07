@@ -153,10 +153,27 @@ const ROUTES = [
     const rotated = (refreshed.headers.get('set-cookie') || '').split(';')[0];
     held('and rotates the cookie', Boolean(rotated) && rotated !== cookieA, 'a new value was issued');
 
-    const replay = await call('POST', '/auth/refresh', { cookie: cookieA });
-    held('replaying the OLD refresh cookie is refused', replay.status === 401, `-> ${replay.status}`);
+    // Rotation has a narrow grace window, and it has to: two browser tabs share
+    // one cookie, so both wake, both find the access token expired, and both
+    // refresh with the same value. Refusing the loser logged people out of
+    // everything for having two tabs open. While the replacement is still the
+    // live end of the chain, that race is served.
+    const raced = await call('POST', '/auth/refresh', { cookie: cookieA });
+    held('a superseded cookie is served while its replacement is still live',
+      raced.status === 200, `-> ${raced.status} (the two-tabs case)`);
 
-    const afterReplay = await call('POST', '/auth/refresh', { cookie: rotated });
+    // The window closes the moment the real session moves on. Using the
+    // rotated cookie advances the chain, and the old one is a replay again.
+    const advanced = await call('POST', '/auth/refresh', { cookie: rotated });
+    held('the live session refreshes normally', advanced.status === 200, `-> ${advanced.status}`);
+
+    const replay = await call('POST', '/auth/refresh', { cookie: cookieA });
+    held('replaying the OLD refresh cookie is refused once the chain has moved on',
+      replay.status === 401, `-> ${replay.status}`);
+
+    const afterReplay = await call('POST', '/auth/refresh', {
+      cookie: (advanced.headers.get('set-cookie') || '').split(';')[0],
+    });
     held('and the replay invalidates the whole session, not just the old token',
       afterReplay.status === 401, `-> ${afterReplay.status} (reuse detection)`);
 

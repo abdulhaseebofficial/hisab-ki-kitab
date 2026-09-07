@@ -6,11 +6,20 @@ const ACCESS_EXPIRES = process.env.JWT_ACCESS_EXPIRES || '15m';
 const REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES || '30d';
 const REFRESH_MS = 30 * 24 * 60 * 60 * 1000;
 
+/**
+ * How long the access cookie lives.
+ *
+ * Deliberately a little longer than the token inside it. The cookie expiring
+ * first would strip a still-valid token from the browser mid-session; the
+ * token expiring first is the ordinary case the silent refresh handles.
+ */
+const ACCESS_COOKIE_MS = 60 * 60 * 1000;
+
 // Pinning the algorithm matters on VERIFY: without it, jsonwebtoken will accept
 // any algorithm the token claims, which is how algorithm-confusion attacks work.
 const ALGORITHM = 'HS256';
 
-/** Short lived token sent to the browser and held in memory / localStorage. */
+/** Short lived token, sent in an httpOnly cookie and held in memory. */
 const signAccessToken = (userId) =>
   jwt.sign({ sub: String(userId), type: 'access' }, process.env.JWT_ACCESS_SECRET, {
     expiresIn: ACCESS_EXPIRES,
@@ -66,6 +75,30 @@ const sameSitePolicy = () => {
   return 'lax';
 };
 
+/**
+ * Cookie options for the access token.
+ *
+ * The access token used to be kept in localStorage, where any injected script
+ * could read it and keep reading it - a stored token is a token an attacker can
+ * exfiltrate at leisure, long after the injection is cleaned up. In an httpOnly
+ * cookie JavaScript cannot see it at all.
+ *
+ * The path is /api rather than /api/auth: unlike the refresh token, this one
+ * has to reach every endpoint. SameSite is what carries the CSRF defence -
+ * under `lax` a cross-site POST, PUT, PATCH or DELETE does not send the cookie
+ * at all, and those are the only requests here that change anything.
+ */
+const accessCookieOptions = () => {
+  const prod = isProduction();
+  return {
+    httpOnly: true,
+    secure: prod,
+    sameSite: sameSitePolicy(),
+    path: '/api',
+    maxAge: ACCESS_COOKIE_MS,
+  };
+};
+
 /** Cookie options shared by login / refresh / logout so they always match. */
 const refreshCookieOptions = () => {
   const prod = isProduction();
@@ -85,6 +118,8 @@ module.exports = {
   verifyRefreshToken,
   hashToken,
   refreshCookieOptions,
+  accessCookieOptions,
   REFRESH_MS,
   REFRESH_COOKIE: 'hw_refresh',
+  ACCESS_COOKIE: 'hw_access',
 };

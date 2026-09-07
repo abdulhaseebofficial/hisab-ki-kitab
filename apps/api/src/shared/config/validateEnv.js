@@ -104,6 +104,39 @@ const validateEnv = () => {
           'Anyone who forgets their password will be locked out permanently.'
       );
     }
+
+    // Rate limiting in production has to be counted somewhere every instance
+    // can see. In memory it is per-instance, which on a platform that gives
+    // each cold request its own instance means the limit is present in the
+    // response headers and stops nobody.
+    if (String(process.env.RATE_LIMIT_STORE || '').trim().toLowerCase() === 'memory') {
+      warnings.push(
+        'RATE_LIMIT_STORE=memory in production: limits are counted per instance, ' +
+          'so brute-force protection is largely ineffective. Leave it unset to use ' +
+          'the shared Postgres counter.'
+      );
+    }
+  }
+
+  // Google sign-in is optional, so an absent client id is a warning rather than
+  // a refusal - the button is simply never shown. A MALFORMED one is different:
+  // it means somebody intended to enable it and the feature will fail at the
+  // moment a person tries to use it, which is the worst time to find out.
+  const googleClientId = String(process.env.GOOGLE_CLIENT_ID || '').trim();
+  if (!googleClientId) {
+    warnings.push(
+      'GOOGLE_CLIENT_ID is not set, so "Continue with Google" is switched off. ' +
+        'Set it to the OAuth 2.0 Web client id from the Google Cloud console to enable it.'
+    );
+  } else if (!/^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(googleClientId)) {
+    // A Web client id always has this shape. Anything else is a secret pasted
+    // into the wrong variable, a truncated copy, or an id for the wrong
+    // platform - and every one of those fails only at sign-in.
+    errors.push(
+      'GOOGLE_CLIENT_ID does not look like a Google OAuth Web client id ' +
+        '(expected something ending in .apps.googleusercontent.com). ' +
+        'Leave it unset to switch Google sign-in off.'
+    );
   }
 
   warnings.forEach((w) => console.warn(`[config] warning: ${w}`));

@@ -41,12 +41,29 @@ const { ok, section, heading, call, report, requireApi, bailIfRateLimited, curre
   const rotatedCookie = currentCookie();
   ok('and rotates the cookie', rotatedCookie !== staleCookie, 'cookie changed');
 
-  // Replaying the superseded token is what a stolen cookie looks like, so the
-  // server drops every session for the account rather than serving it.
+  // A superseded token presented while its replacement is still the live end of
+  // the chain is the two-tabs case, not an attack: both tabs woke together and
+  // both refreshed with the same cookie. Treating that as a stolen cookie is
+  // what used to log people out for having two tabs open, so it is served.
+  //
+  // Once the chain has moved on, the same token is a replay again - and that is
+  // what is asserted next. tests/e2e/refresh.test.js covers the race itself.
   r = await call('POST', '/auth/refresh', undefined, undefined, { cookie: staleCookie });
-  ok('a replayed refresh token is rejected', r.status === 401, `-> ${r.status}`);
+  ok('a superseded token is served while its replacement is still live',
+    r.status === 200, `-> ${r.status}`);
+
+  // Advance the chain: the rotated cookie is used, so the replacement the stale
+  // token points at is itself rotated and no longer live.
   r = await call('POST', '/auth/refresh', undefined, undefined, { cookie: rotatedCookie });
-  ok('and the replay revoked the live session too', r.status === 401, `-> ${r.status}`);
+  ok('the live session still refreshes normally', r.status === 200, `-> ${r.status}`);
+
+  r = await call('POST', '/auth/refresh', undefined, undefined, { cookie: staleCookie });
+  ok('but once the chain has moved on the same token is a replay',
+    r.status === 401, `-> ${r.status}`);
+
+  // And a replay revokes everything, including whatever was still live.
+  r = await call('POST', '/auth/refresh', undefined, undefined, { cookie: rotatedCookie });
+  ok('the replay revoked the live session too', r.status === 401, `-> ${r.status}`);
 
   // Sign back in so the rest of the suite has a working session.
   r = await call('POST', '/auth/login', { email: 'demo@hisabkikitab.app', password: 'demo1234' });

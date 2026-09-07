@@ -2,7 +2,7 @@ const express = require('express');
 const ctrl = require('./auth.controller');
 const validate = require('../../shared/middleware/validate');
 const { protect } = require('./auth.middleware');
-const { authLimiter } = require('../../shared/middleware/rateLimiter');
+const { authLimiter, refreshLimiter } = require('../../shared/middleware/rateLimiter');
 const authValidators = require('./auth.validator');
 
 const router = express.Router();
@@ -27,13 +27,21 @@ router.post('/login', authLimiter, authValidators.login, validate, ctrl.login);
 // against Google on each call, so an unlimited endpoint would also be a way to
 // make this server hammer Google's key endpoint on someone's behalf.
 router.post('/google', authLimiter, authValidators.google, validate, ctrl.googleSignIn);
-router.post('/refresh', ctrl.refresh);
+// Metered like the rest: refresh is what a stolen cookie is used against.
+router.post('/refresh', refreshLimiter, ctrl.refresh);
 router.post('/logout', ctrl.logout);
 
 router.post('/forgot-password', authLimiter, authValidators.forgotPassword, validate, ctrl.forgotPassword);
 router.post('/reset-password/:token', authLimiter, authValidators.resetPassword, validate, ctrl.resetPassword);
 
 router.get('/me', protect, ctrl.me);
-router.put('/change-password', protect, authValidators.changePassword, validate, ctrl.changePassword);
+router.put(
+  '/change-password',
+  refreshLimiter,
+  protect,
+  authValidators.changePassword,
+  validate,
+  ctrl.changePassword
+);
 
 module.exports = router;

@@ -1,14 +1,25 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import authService from './api/authApi';
-import { getAccessToken, setSessionExpiredHandler, getErrorMessage } from '../../shared/api/client';
+import { setSessionExpiredHandler, getErrorMessage } from '../../shared/api/client';
 
 const AuthContext = createContext(null);
 
 /**
- * Owns the signed-in student. On boot it tries to restore the session:
- * an access token in localStorage is verified with /auth/me, and if that
- * fails the httpOnly refresh cookie gets one chance via /auth/refresh.
+ * Owns the signed-in student, and restores the session on boot.
+ *
+ * Nothing is read from localStorage any more - the access token is not stored
+ * anywhere a script can reach it. A fresh page load therefore starts with no
+ * token in memory and two ways back in, tried in order:
+ *
+ *   /auth/me       the httpOnly access cookie authenticates it directly. This
+ *                  is the common case and costs no rotation.
+ *
+ *   /auth/refresh  the access cookie has expired, so the longer-lived refresh
+ *                  cookie mints a new session.
+ *
+ * Trying /auth/me first matters: refreshing on every reload would rotate the
+ * refresh token every time somebody pressed F5.
  */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -31,16 +42,19 @@ export function AuthProvider({ children }) {
 
     const restore = async () => {
       try {
-        if (getAccessToken()) {
-          const me = await authService.me();
-          if (!cancelled) setUser(me);
-        } else {
-          // No access token, but the refresh cookie may still be valid.
+        // The access cookie is sent automatically; no token in memory is the
+        // normal state on a fresh load, not a signed-out one.
+        const me = await authService.me();
+        if (!cancelled) setUser(me);
+      } catch {
+        try {
+          // The access cookie has expired. The refresh cookie outlives it by a
+          // long way, and this is exactly what it is for.
           const refreshed = await authService.refresh();
           if (!cancelled) setUser(refreshed);
+        } catch {
+          if (!cancelled) setUser(null);
         }
-      } catch {
-        if (!cancelled) setUser(null);
       } finally {
         if (!cancelled) setLoading(false);
       }

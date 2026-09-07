@@ -45,6 +45,15 @@ const DUMMY_HASH = bcrypt.hashSync('hisab-ki-kitab-timing-equaliser', 12);
  * Issues both tokens and records the refresh token's hash against the user.
  * Expired entries are pruned by the repository on the way through.
  */
+/**
+ * How long a just-rotated refresh token is still honoured.
+ *
+ * Long enough for two tabs that woke together; far too short to be a useful
+ * foothold for a stolen cookie, which would have to arrive inside the same
+ * minute as a legitimate refresh to benefit at all.
+ */
+const ROTATION_GRACE_MS = 60 * 1000;
+
 const issueSession = async (user) => {
   const accessToken = signAccessToken(user._id);
   const refreshToken = signRefreshToken(user._id, user.tokenVersion);
@@ -197,20 +206,59 @@ const refresh = async (token) => {
   }
 
   const presented = hashToken(token);
-  const known = await authRepo.hasRefreshToken(user._id, presented);
+  const stored = await authRepo.findRefreshToken(user._id, presented);
 
-  if (!known) {
+  const replay = () => {
     console.warn(`[security] refresh token replay for user ${user._id}; revoking all sessions`);
-    await users.revokeAllSessions(user._id);
     const err = ApiError.unauthorized('This session is no longer valid, please log in again');
     err.clearRefreshCookie = true;
-    throw err;
+    return err;
+  };
+
+  // Nothing stored at all: an old token from before a revocation, or a forged
+  // one. Either way the account's sessions go.
+  if (!stored) {
+    await users.revokeAllSessions(user._id);
+    throw replay();
   }
 
-  // Consume the presented token, then hand out a fresh one.
-  await authRepo.removeRefreshToken(user._id, presented);
+  if (stored.rotatedAt) {
+    // Already exchanged. Two tabs sharing one cookie both wake, both find the
+    // access token expired, and both refresh - the second arrives holding a
+    // token the first has just rotated. That is not an attack, and logging the
+    // person out of everything for having two tabs open was the bug.
+    //
+    // It is only treated as a race if it happened within the grace window AND
+    // the token it was exchanged for still exists. An old copy surfacing later,
+    // or one whose chain has since been revoked, is still a replay.
+    const age = Date.now() - new Date(stored.rotatedAt).getTime();
+    const chainIntact = await authRepo.replacementIsLive(user._id, stored.replacedBy);
 
+    if (age > ROTATION_GRACE_MS || !chainIntact) {
+      await users.revokeAllSessions(user._id);
+      throw replay();
+    }
+
+    // A genuine race. Issue a fresh session rather than replaying the
+    // replacement: both tabs then hold their own live token, and neither is
+    // carrying a copy of the other's.
+    const raced = await issueSession(user);
+    return { user: users.toPublic(user), ...raced };
+  }
+
+  // The live token. Mint the replacement first so the row can record what took
+  // its place, then claim the rotation - conditionally, so that if another
+  // request beat us to it we fall through to the grace path on the retry
+  // rather than both sides believing they rotated it.
   const session = await issueSession(user);
+  const won = await authRepo.rotateRefreshToken(user._id, presented, hashToken(session.refreshToken));
+
+  if (!won) {
+    // Someone else rotated it between the read and the write. Our new session
+    // is already recorded and valid, so it is handed over as it stands.
+    console.info(`[auth] concurrent refresh for user ${user._id}; both sessions issued`);
+  }
+
   return { user: users.toPublic(user), ...session };
 };
 

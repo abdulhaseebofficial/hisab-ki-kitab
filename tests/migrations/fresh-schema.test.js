@@ -6,19 +6,39 @@ const path = require('path');
  * Creates a throwaway schema, points search_path at it, runs every migration
  * into it, checks what came out, and drops it again. The migrations use
  * unqualified names, so they land in the temporary schema rather than public.
+ *
+ * It connects on its OWN client, to the direct (non-pooled) URL, and never
+ * through the shared pool.
+ *
+ * That is not tidiness. `SET search_path` is session state, and a
+ * transaction-mode pooler hands the same backend connection to whoever asks
+ * next - so this test's search_path could be inherited by a completely
+ * different process, which would then look for its tables in a schema this
+ * test had already dropped. That is exactly what happened: an API server
+ * running alongside started answering "column finance_mode does not exist"
+ * for a column that was plainly there.
  */
 require('dotenv').config({ path: path.join(__dirname, '..', '..', 'apps', 'api', '.env') });
 
 
+const { Client } = require('pg');
+
 const API = path.join(__dirname, '..', '..', 'apps', 'api');
-const { getPool, closePool } = require(path.join(API, 'src/infrastructure/database/pool'));
 const { migrationFiles } = require(path.join(API, 'src/infrastructure/database/migrate'));
+const { migrationUrl } = require(path.join(API, 'src/infrastructure/database/databaseUrl'));
 
 const MIGRATIONS = path.join(__dirname, '..', '..', 'database', 'migrations');
 const SCHEMA = 'migration_smoke_test';
 
 (async () => {
-  const client = await getPool().connect();
+  // A dedicated connection, on the direct URL where one is configured, so no
+  // session state of this test's can reach anybody else.
+  const client = new Client({
+    connectionString: migrationUrl(),
+    ssl: { rejectUnauthorized: false },
+  });
+  await client.connect();
+
   let failed = false;
   try {
     await client.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
@@ -92,8 +112,8 @@ const SCHEMA = 'migration_smoke_test';
   } finally {
     await client.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});
     await client.query('SET search_path TO public').catch(() => {});
-    client.release();
-    await closePool();
+    // A dedicated client is closed, not returned to a pool.
+    await client.end().catch(() => {});
   }
   process.exit(failed ? 1 : 0);
 })();

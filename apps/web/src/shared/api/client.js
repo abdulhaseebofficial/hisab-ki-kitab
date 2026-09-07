@@ -1,21 +1,32 @@
 import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/api';
-const TOKEN_KEY = 'hw-access-token';
 
 /* --------------------------- token storage -------------------------- */
 
-// Kept in memory for speed and mirrored to localStorage so a refresh of the
-// page does not log the student out. The long-lived refresh token lives in an
-// httpOnly cookie that JavaScript deliberately cannot read.
-let accessToken = localStorage.getItem(TOKEN_KEY) || null;
+/**
+ * The access token lives in memory for this page, and nowhere else.
+ *
+ * It used to be mirrored into localStorage so a reload would not sign the
+ * student out. That worked, and it also meant any injected script could read
+ * the token whenever it liked and keep reading it long after the injection
+ * itself was cleaned up - a stored credential is a credential an attacker can
+ * take away with them.
+ *
+ * Reloads are handled by the server instead: the same token is set as an
+ * httpOnly cookie that JavaScript cannot read, and the browser presents it
+ * automatically. So a fresh page load starts with no token in memory, the
+ * cookie authenticates the first call, and nothing is persisted here at all.
+ *
+ * The variable is still kept because the Authorization header is the explicit
+ * credential, and an explicit credential should beat an ambient one.
+ */
+let accessToken = null;
 
 export const getAccessToken = () => accessToken;
 
 export const setAccessToken = (token) => {
-  accessToken = token;
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  accessToken = token || null;
 };
 
 /* ------------------------------- client ----------------------------- */
@@ -28,6 +39,8 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // No header on a fresh page load, and that is correct: the httpOnly cookie
+  // carries the session until the first response hands a token back.
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   return config;
 });

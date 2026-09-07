@@ -9,16 +9,30 @@
 const auth = require('./auth.service');
 const users = require('../users/users.service');
 const asyncHandler = require('../../shared/http/asyncHandler');
-const { refreshCookieOptions, REFRESH_COOKIE } = require('./auth.tokens');
+const {
+  refreshCookieOptions,
+  accessCookieOptions,
+  REFRESH_COOKIE,
+  ACCESS_COOKIE,
+} = require('./auth.tokens');
 const google = require('../../infrastructure/auth/google');
 
-/** Sends the refresh token as an httpOnly cookie and returns the access token. */
-const setSession = (res, { refreshToken }) => {
+/**
+ * Puts both tokens into httpOnly cookies.
+ *
+ * The access token is still returned in the response body as well, because
+ * that is the API contract and what every non-browser caller reads. What has
+ * changed is that a browser no longer needs to keep a copy anywhere a script
+ * can reach - the cookie carries it, and JavaScript cannot see the cookie.
+ */
+const setSession = (res, { refreshToken, accessToken }) => {
   res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions());
+  if (accessToken) res.cookie(ACCESS_COOKIE, accessToken, accessCookieOptions());
 };
 
 const clearSession = (res) => {
   res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions(), maxAge: undefined });
+  res.clearCookie(ACCESS_COOKIE, { ...accessCookieOptions(), maxAge: undefined });
 };
 
 const readRefreshCookie = (req) => (req.cookies ? req.cookies[REFRESH_COOKIE] : null);
