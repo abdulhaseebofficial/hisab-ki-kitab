@@ -73,6 +73,15 @@ const paymentsFor = async (id, financeMode, userId) => {
   return debtsRepo.payments(id, userId);
 };
 
+/**
+ * Every debt in one mode with its ledger, for the account export.
+ *
+ * Includes cancelled and settled records. An export is an account of what
+ * happened, not a list of what is still outstanding.
+ */
+const listAllForExport = (userId, financeMode) =>
+  debtsRepo.listAllWithPayments(userId, financeMode);
+
 /* ------------------------------ writing ----------------------------- */
 
 const create = async (user, input) => {
@@ -249,6 +258,7 @@ module.exports = {
   list,
   getById,
   paymentsFor,
+  listAllForExport,
   create,
   update,
   remove,

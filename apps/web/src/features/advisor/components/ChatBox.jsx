@@ -7,15 +7,36 @@ import { getErrorMessage } from '../../../shared/api/client';
 import Button from '../../../shared/components/ui/Button';
 import Spinner from '../../../shared/components/ui/Spinner';
 import { cn, initials } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
+import { useAuth } from '../../auth';
 
-const SUGGESTIONS = [
-  'How can I save more this month?',
-  'Where am I overspending?',
-  'Is my food spending normal for a hostel student?',
-  'Help me save 5000 before next month',
-];
+// The last two differ by mode: asking a householder whether their food
+// spending is normal "for a hostel student" tells them the app has not
+// understood who they are.
+const SUGGESTION_KEYS = {
+  student: [
+    'advisor.suggestSaveMore',
+    'advisor.suggestOverspending',
+    'advisor.suggestFoodStudent',
+    'advisor.suggestTargetStudent',
+  ],
+  householder: [
+    'advisor.suggestSaveMore',
+    'advisor.suggestOverspending',
+    'advisor.suggestBillsHouseholder',
+    'advisor.suggestTargetHouseholder',
+  ],
+};
 
-export default function ChatBox({ userName = 'You' }) {
+export default function ChatBox({ userName }) {
+  const { t } = useT();
+  const { user } = useAuth();
+
+  // Resolved here, not in the parameter list, so the fallback is a translated
+  // word rather than a fixed English one.
+  const displayName = userName || t('advisor.you');
+  const mode = user && user.financeMode === 'householder' ? 'householder' : 'student';
+  const suggestions = SUGGESTION_KEYS[mode].map((key) => t(key));
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -70,14 +91,14 @@ export default function ChatBox({ userName = 'You' }) {
           <Sparkles className="h-4 w-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Your money coach</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Answers based on your real spending</p>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('advisor.coachTitle')}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('advisor.coachSubtitle')}</p>
         </div>
         {messages.length > 0 && (
           <button
             type="button"
             onClick={clear}
-            title="Clear conversation"
+            title={t('advisor.clearConversation')}
             className="rounded-lg p-2 text-slate-400 transition hover:bg-danger/10 hover:text-danger dark:hover:bg-danger/15"
           >
             <Trash2 className="h-4 w-4" />
@@ -96,10 +117,10 @@ export default function ChatBox({ userName = 'You' }) {
               <Sparkles className="h-6 w-6 text-brand-600 dark:text-brand-400" />
             </span>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Ask me anything about your money
+              {t('advisor.askAnything')}
             </h3>
             <p className="mt-1 max-w-xs text-xs text-slate-500 dark:text-slate-400">
-              I can see your expenses, budgets and goals, so the answers are about your actual numbers.
+              {t('advisor.askAnythingDetail')}
             </p>
           </div>
         ) : (
@@ -117,7 +138,7 @@ export default function ChatBox({ userName = 'You' }) {
                 )}
                 aria-hidden="true"
               >
-                {message.role === 'user' ? initials(userName) : <Sparkles className="h-4 w-4" />}
+                {message.role === 'user' ? initials(displayName) : <Sparkles className="h-4 w-4" />}
               </span>
 
               <div
@@ -154,7 +175,7 @@ export default function ChatBox({ userName = 'You' }) {
 
       {messages.length === 0 && !loading && (
         <div className="flex flex-wrap gap-1.5 border-t border-slate-200 px-4 py-3 dark:border-slate-800">
-          {SUGGESTIONS.map((suggestion) => (
+          {suggestions.map((suggestion) => (
             <button
               key={suggestion}
               type="button"
@@ -186,12 +207,12 @@ export default function ChatBox({ userName = 'You' }) {
           }}
           rows={1}
           maxLength={1000}
-          placeholder="Ask about your spending..."
-          aria-label="Your question"
+          placeholder={t('advisor.inputPlaceholder')}
+          aria-label={t('advisor.yourQuestion')}
           className="hw-input max-h-32 min-h-[44px] flex-1 resize-none py-3"
         />
         <Button type="submit" icon={Send} loading={sending} disabled={!input.trim()} className="h-11 px-4">
-          <span className="sr-only sm:not-sr-only">Send</span>
+          <span className="sr-only sm:not-sr-only">{t('advisor.send')}</span>
         </Button>
       </form>
     </div>

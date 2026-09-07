@@ -16,12 +16,17 @@ import { useAuth } from '../../auth';
 import reportService from '../api/reportsApi';
 import { getErrorMessage } from '../../../shared/api/client';
 import { MONTH_NAMES, formatChange, formatDate, formatMoney, cn } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
+import useCategoryLabel from '../../../shared/i18n/useCategoryLabel';
 
 const now = new Date();
 const YEARS = [now.getFullYear(), now.getFullYear() - 1, now.getFullYear() - 2];
 
 export default function Reports() {
-  const { currency } = useAuth();
+  const { t } = useT();
+  const label = useCategoryLabel();
+  const { user, currency } = useAuth();
+  const householder = Boolean(user && user.financeMode === 'householder');
   const [period, setPeriod] = useState({ month: now.getMonth() + 1, year: now.getFullYear() });
   const [downloading, setDownloading] = useState('');
   const [showTable, setShowTable] = useState(false);
@@ -45,7 +50,10 @@ export default function Reports() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Reports" subtitle="The whole month in one place, ready to download.">
+      <PageHeader
+        title={t('reports.title')}
+        subtitle={t(householder ? 'reports.subtitleHouseholder' : 'reports.subtitleStudent')}
+      >
         <div className="flex flex-wrap items-end gap-2">
           <Select
             options={MONTH_NAMES.map((name, index) => ({ value: index + 1, label: name }))}
@@ -84,58 +92,64 @@ export default function Reports() {
           <SkeletonCard lines={8} />
         </div>
       ) : error ? (
-        <EmptyState icon={BarChart3} title="Could not build the report" message={error} actionLabel="Retry" onAction={reload} />
+        <EmptyState icon={BarChart3} title={t('reports.buildFailed')} message={error} actionLabel={t('common.retry')} onAction={reload} />
       ) : (
         <>
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Income" value={totals.income} currency={currency} tone="safe" />
+            <StatCard label={t('reports.income')} value={totals.income} currency={currency} tone="safe" />
             <StatCard
-              label="Spent"
+              label={t('reports.spent')}
               value={totals.spent}
               currency={currency}
               tone="danger"
               footnote={
                 data.comparison.previousSpent > 0
-                  ? `${formatChange(data.comparison.changePercent)} vs ${data.comparison.previousLabel}`
-                  : 'No previous month to compare'
+                  ? t('reports.versusPrevious', {
+                      change: formatChange(data.comparison.changePercent),
+                      month: data.comparison.previousLabel,
+                    })
+                  : t('reports.noPrevious')
               }
             />
             <StatCard
-              label="Saved"
+              label={t('reports.saved')}
               value={totals.saved}
               currency={currency}
               tone={totals.saved < 0 ? 'danger' : 'brand'}
-              footnote={`${totals.savingsRate}% savings rate`}
+              footnote={t('reports.savingsRate', { percent: totals.savingsRate })}
             />
             <StatCard
-              label="Transactions"
+              label={t('reports.transactions')}
               value={totals.transactionCount}
               raw
               tone="neutral"
-              footnote={`${formatMoney(totals.dailyAverage, currency)} a day on average`}
+              footnote={t('reports.dailyAverage', { amount: formatMoney(totals.dailyAverage, currency) })}
             />
           </section>
 
           <section className="grid gap-5 lg:grid-cols-2">
             <Card>
-              <CardHeader title="Spending split" subtitle={data.monthLabel} icon={PieIcon} />
+              <CardHeader title={t('reports.spendingSplit')} subtitle={data.monthLabel} icon={PieIcon} />
               <CategoryPieChart data={data.breakdown} currency={currency} total={totals.spent} />
             </Card>
 
             <Card>
-              <CardHeader title="Daily spending" subtitle={data.monthLabel} icon={TrendingUp} />
+              <CardHeader title={t('reports.dailySpending')} subtitle={data.monthLabel} icon={TrendingUp} />
               <TrendChart data={data.trend} currency={currency} average={totals.dailyAverage} />
             </Card>
           </section>
 
           <Card>
             <CardHeader
-              title="This month vs last month"
-              subtitle={`${data.monthLabel} against ${data.comparison.previousLabel}`}
+              title={t('reports.monthVsMonth')}
+              subtitle={t('reports.monthAgainst', {
+                current: data.monthLabel,
+                previous: data.comparison.previousLabel,
+              })}
               icon={BarChart3}
               action={
                 <Button variant="ghost" size="sm" icon={Table2} onClick={() => setShowTable((open) => !open)}>
-                  {showTable ? 'Hide table' : 'Table view'}
+                  {showTable ? t('reports.hideTable') : t('reports.tableView')}
                 </Button>
               }
             />
@@ -153,16 +167,16 @@ export default function Reports() {
                 <table className="w-full min-w-[420px] text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                      <th scope="col" className="py-2 pr-3 font-semibold">Category</th>
+                      <th scope="col" className="py-2 pr-3 font-semibold">{t('common.category')}</th>
                       <th scope="col" className="py-2 pr-3 text-right font-semibold">{data.comparison.previousLabel}</th>
                       <th scope="col" className="py-2 pr-3 text-right font-semibold">{data.monthLabel}</th>
-                      <th scope="col" className="py-2 text-right font-semibold">Change</th>
+                      <th scope="col" className="py-2 text-right font-semibold">{t('reports.change')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {data.comparison.categories.map((row) => (
                       <tr key={row.category}>
-                        <td className="py-2 pr-3 text-slate-700 dark:text-slate-300">{row.category}</td>
+                        <td className="py-2 pr-3 text-slate-700 dark:text-slate-300">{label(row.category)}</td>
                         <td className="py-2 pr-3 text-right tabular-nums text-slate-500 dark:text-slate-400">
                           {formatMoney(row.previous, currency)}
                         </td>
@@ -187,44 +201,52 @@ export default function Reports() {
 
           <section className="grid gap-5 lg:grid-cols-2">
             <Card>
-              <CardHeader title="Highlights" />
+              <CardHeader title={t('reports.highlights')} />
               <dl className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
                 <div className="flex justify-between py-2.5 first:pt-0">
-                  <dt className="text-slate-600 dark:text-slate-400">Biggest category</dt>
+                  <dt className="text-slate-600 dark:text-slate-400">{t('reports.biggestCategory')}</dt>
                   <dd className="font-semibold text-slate-900 dark:text-slate-100">
                     {data.highestCategory
-                      ? `${data.highestCategory.category} (${formatMoney(data.highestCategory.amount, currency)})`
-                      : 'Nothing logged'}
+                      ? t('reports.categoryWithAmount', {
+                          category: label(data.highestCategory.category),
+                          amount: formatMoney(data.highestCategory.amount, currency),
+                        })
+                      : t('reports.nothingLogged')}
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4 py-2.5">
-                  <dt className="text-slate-600 dark:text-slate-400">Biggest single expense</dt>
+                  <dt className="text-slate-600 dark:text-slate-400">{t('reports.biggestExpense')}</dt>
                   <dd className="text-right font-semibold text-slate-900 dark:text-slate-100">
                     {data.biggestExpense
-                      ? `${formatMoney(data.biggestExpense.amount, currency)} on ${formatDate(data.biggestExpense.date)}`
+                      ? t('reports.amountOnDate', {
+                          amount: formatMoney(data.biggestExpense.amount, currency),
+                          date: formatDate(data.biggestExpense.date),
+                        })
                       : '-'}
                   </dd>
                 </div>
                 <div className="flex justify-between py-2.5 last:pb-0">
-                  <dt className="text-slate-600 dark:text-slate-400">Categories over budget</dt>
+                  <dt className="text-slate-600 dark:text-slate-400">{t('reports.overBudget')}</dt>
                   <dd className="font-semibold text-slate-900 dark:text-slate-100">
-                    {data.overBudget.length === 0 ? 'None, well done' : data.overBudget.map((b) => b.category).join(', ')}
+                    {data.overBudget.length === 0
+                      ? t('reports.noneOverBudget')
+                      : data.overBudget.map((b) => label(b.category)).join(', ')}
                   </dd>
                 </div>
               </dl>
             </Card>
 
             <Card>
-              <CardHeader title="Where your income came from" />
+              <CardHeader title={t('reports.incomeSources')} />
               {data.incomeBySource.length === 0 ? (
                 <p className="py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-                  No income logged for this month.
+                  {t('reports.noIncomeThisMonth')}
                 </p>
               ) : (
                 <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-800">
                   {data.incomeBySource.map((row) => (
                     <li key={row.source} className="flex justify-between py-2.5">
-                      <span className="text-slate-600 dark:text-slate-400">{row.source}</span>
+                      <span className="text-slate-600 dark:text-slate-400">{label(row.source, 'income')}</span>
                       <span className="font-semibold tabular-nums text-safe">
                         +{formatMoney(row.amount, currency)}
                       </span>

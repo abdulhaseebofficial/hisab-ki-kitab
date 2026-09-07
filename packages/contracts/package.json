@@ -10,7 +10,9 @@
     "./validation": "./validation.js",
     "./validation.json": "./validation.json",
     "./catalogue": "./catalogue.js",
-    "./catalogue.json": "./catalogue.json"
+    "./catalogue.json": "./catalogue.json",
+    "./notifications": "./notifications.js",
+    "./notifications.json": "./notifications.json"
   },
   "license": "MIT"
 }

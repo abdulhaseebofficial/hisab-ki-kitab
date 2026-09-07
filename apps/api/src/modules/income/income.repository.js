@@ -92,7 +92,7 @@ const update = async (id, financeMode, userId, patch) => {
     note: patch.note,
     date: patch.date,
   });
-  if (!fragment) return findById(id, userId);
+  if (!fragment) return findById(id, financeMode, userId);
 
   const row = await queryOne(
     `UPDATE income SET ${fragment}, updated_at = now()

@@ -155,7 +155,8 @@ const countByCategory = (userId, financeMode, category) =>
 const countCreatedSince = (userId, since) => expensesRepo.countCreatedSince(userId, since);
 
 /** Recurring bills falling due by a date, for the bill reminder. */
-const findBillsDueBy = (userId, when) => expensesRepo.findBillsDueBy(userId, when);
+const findBillsDueBy = (userId, financeMode, when) =>
+  expensesRepo.findBillsDueBy(userId, financeMode, when);
 
 module.exports = {
   listRecent,

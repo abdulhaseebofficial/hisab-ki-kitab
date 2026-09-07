@@ -1,0 +1,105 @@
+{
+  "_comment": "Alert wording, per language and - where it actually differs - per finance mode. The API stores the KEY and the values in a notification's meta, never the rendered sentence, so an alert raised last month reads in whatever language the person is using today. Placeholders in {braces} are filled from the stored values; a category name is filled in already-translated, and anything the person typed themselves (a goal title, an expense description) is passed through untouched.",
+  "overspendOver": {
+    "title": {
+      "en": "Over budget: {category}",
+      "roman_ur": "Budget se zyada: {category}"
+    },
+    "message": {
+      "en": "You have spent {spent} against a {limit} limit for {category} this month. That is {percent}% of the limit.",
+      "roman_ur": "Is mahine {category} par {spent} kharch ho chuke hain jab ke had {limit} thi. Yeh had ka {percent}% hai."
+    }
+  },
+  "overspendWarning": {
+    "title": {
+      "en": "{category} is at {percent}%",
+      "roman_ur": "{category} {percent}% par pohanch gayi"
+    },
+    "message": {
+      "en": "Only {remaining} left in your {category} budget this month. Slow down a little to stay inside it.",
+      "roman_ur": "Is mahine {category} ke budget mein sirf {remaining} baqi hain. Thora ehtiyat karein taa-ke had ke andar rahein."
+    }
+  },
+  "goalOverdue": {
+    "title": {
+      "en": "Goal overdue: {title}",
+      "roman_ur": "Maqsad ki tareekh guzar gayi: {title}"
+    },
+    "message": {
+      "en": "The deadline for \"{title}\" has passed and {remaining} is still short. Push the deadline out or top it up.",
+      "roman_ur": "\"{title}\" ki aakhri tareekh guzar chuki hai aur {remaining} abhi kam hain. Tareekh aagay barhayein ya raqam poori karein."
+    }
+  },
+  "goalDueSoon": {
+    "title": {
+      "en": "{title} is due in {days} day(s)",
+      "roman_ur": "{title} ki tareekh {days} din mein hai"
+    },
+    "message": {
+      "en": "You still need {remaining} for \"{title}\". That is about {perDay} a day.",
+      "roman_ur": "\"{title}\" ke liye abhi {remaining} chahiye. Yani taqreeban {perDay} rozana."
+    }
+  },
+  "logReminder": {
+    "title": {
+      "en": "Log your expenses",
+      "roman_ur": "Apne kharchay darj karein"
+    },
+    "message": {
+      "student": {
+        "en": "Nothing logged for two days. Add today's spends while you still remember them, even the small ones.",
+        "roman_ur": "Do din se kuch darj nahi hua. Aaj ke kharchay abhi likh lein jab tak yaad hain, chhote wale bhi."
+      },
+      "householder": {
+        "en": "Nothing logged for two days. Add what the household spent while you still remember it, the small things included.",
+        "roman_ur": "Do din se kuch darj nahi hua. Ghar ke kharchay abhi likh lein jab tak yaad hain, chhoti cheezein bhi."
+      }
+    }
+  },
+  "billDue": {
+    "title": {
+      "en": "{category} is coming up",
+      "roman_ur": "{category} ki tareekh aa rahi hai"
+    },
+    "message": {
+      "student": {
+        "en": "{what} of {amount} is due on {date}. Keep that aside.",
+        "roman_ur": "{what} ({amount}) {date} ko dena hai. Itni raqam alag rakh lein."
+      },
+      "householder": {
+        "en": "{what} of {amount} is due on {date}. Set that aside before the rest of the month goes.",
+        "roman_ur": "{what} ({amount}) {date} ko dena hai. Baqi mahina kharch hone se pehle yeh alag rakh lein."
+      }
+    }
+  },
+  "goalReached": {
+    "title": {
+      "en": "Goal reached: {title}",
+      "roman_ur": "Maqsad poora: {title}"
+    },
+    "message": {
+      "en": "You saved the full {amount}. That is real discipline. Time to set the next one!",
+      "roman_ur": "Aapne poore {amount} bacha liye. Yeh asli pabandi hai. Ab agla maqsad rakhein!"
+    }
+  },
+  "debtSettledBorrowed": {
+    "title": {
+      "en": "Udhaar settled",
+      "roman_ur": "Udhaar chukta ho gaya"
+    },
+    "message": {
+      "en": "You paid {person} back - {amount} is square. Nice.",
+      "roman_ur": "Aapne {person} ko {amount} wapas kar diye - hisab saaf. Bohat khoob."
+    }
+  },
+  "debtSettledLent": {
+    "title": {
+      "en": "Udhaar settled",
+      "roman_ur": "Udhaar chukta ho gaya"
+    },
+    "message": {
+      "en": "You got your {amount} back from {person}. Nice.",
+      "roman_ur": "{person} se aapke {amount} wapas mil gaye. Bohat khoob."
+    }
+  }
+}

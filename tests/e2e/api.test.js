@@ -300,8 +300,14 @@ const { ok, section, heading, call, report, requireApi, bailIfRateLimited, curre
   const overspend = (r.data?.data?.items || []).filter((n) => n.type === 'overspend');
   ok('writing the expense raised an overspend alert', overspend.length >= 1,
     `${overspend.length} overspend alert(s)`);
-  ok('and it names the category that went over',
-    overspend.some((n) => `${n.title} ${n.message}`.includes('Travel')),
+  // The alert names the category the way a person reads it - "Transport" -
+  // not the way it is stored - "Travel". Both are asserted: the label has to
+  // be there, and the stored id must not be.
+  ok('and it names the category that went over, as a label',
+    overspend.some((n) => `${n.title} ${n.message}`.includes('Transport')),
+    overspend[0]?.title);
+  ok('without putting the stored id on screen',
+    overspend.every((n) => !`${n.title} ${n.message}`.includes('Travel')),
     overspend[0]?.title);
 
   // Writing again must not raise the same alert twice - that is what the

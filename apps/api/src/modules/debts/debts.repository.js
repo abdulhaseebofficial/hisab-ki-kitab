@@ -169,6 +169,45 @@ const payments = async (debtId, userId) => {
   return toApiList(rows);
 };
 
+/**
+ * Every debt in one mode, with its ledger attached - for the account export.
+ *
+ * Cancelled and settled records are included. An export that quietly dropped
+ * them would be a partial account of what happened: a cancelled debt is a
+ * thing the person recorded and then wrote off, and the ledger under a settled
+ * one is the proof of what was actually paid.
+ *
+ * Two queries rather than one per debt: the ledger comes back in a single read
+ * and is grouped in memory, so an account with three hundred debts does not
+ * become three hundred round trips.
+ */
+const listAllWithPayments = async (userId, financeMode) => {
+  const [debtRows, paymentRows] = await Promise.all([
+    query(
+      `SELECT ${DEBT_COLUMNS} FROM debts d
+        WHERE d.user_id = $1 AND d.finance_mode = $2
+        ORDER BY d.created_at DESC, d.id DESC`,
+      [userId, financeMode]
+    ),
+    query(
+      `SELECT p.* FROM debt_payments p
+         JOIN debts d ON d.id = p.debt_id
+        WHERE p.user_id = $1 AND d.finance_mode = $2
+        ORDER BY p.paid_on DESC, p.created_at DESC`,
+      [userId, financeMode]
+    ),
+  ]);
+
+  const ledger = new Map();
+  for (const row of toApiList(paymentRows)) {
+    const forDebt = ledger.get(row.debtId) || [];
+    forDebt.push(row);
+    ledger.set(row.debtId, forDebt);
+  }
+
+  return toApiList(debtRows).map((debt) => ({ ...debt, payments: ledger.get(debt._id) || [] }));
+};
+
 /* ------------------------------ writing ----------------------------- */
 
 const create = async (userId, input) => {
@@ -481,6 +520,7 @@ module.exports = {
   list,
   findById,
   payments,
+  listAllWithPayments,
   create,
   update,
   remove,

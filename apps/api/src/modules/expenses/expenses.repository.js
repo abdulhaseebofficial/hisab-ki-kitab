@@ -179,7 +179,7 @@ const update = async (id, financeMode, userId, patch) => {
   };
 
   const { fragment, values, next } = buildSet(columns);
-  if (!fragment) return findById(id, userId);
+  if (!fragment) return findById(id, financeMode, userId);
 
   const row = await queryOne(
     `UPDATE expenses SET ${fragment}, updated_at = now()
@@ -325,13 +325,22 @@ const countCreatedSince = async (userId, since) => {
   return Number(row.n);
 };
 
-/** Recurring bills falling due on or before `by`. */
-const findBillsDueBy = async (userId, by) => {
+/**
+ * Recurring bills falling due on or before `by`, in one finance mode.
+ *
+ * Scoped to the mode, unlike the cron sweep above it. The sweep has to see
+ * every template a person owns or half their recurring expenses would stop
+ * being created; this one feeds reminders and the dashboard, which speak to
+ * somebody looking at one set of books. Telling a student their gas bill is
+ * due is a reminder about a life they are not currently in.
+ */
+const findBillsDueBy = async (userId, financeMode, by) => {
   const rows = await query(
     `SELECT * FROM expenses
-      WHERE user_id = $1 AND is_recurring AND next_run_at IS NOT NULL AND next_run_at <= $2
+      WHERE user_id = $1 AND finance_mode = $2
+        AND is_recurring AND next_run_at IS NOT NULL AND next_run_at <= $3
       ORDER BY next_run_at`,
-    [userId, by]
+    [userId, financeMode, by]
   );
   return toApiList(rows);
 };

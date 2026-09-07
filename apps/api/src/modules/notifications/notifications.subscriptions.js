@@ -23,11 +23,16 @@ const onExpenseWritten = async ({ user }) => {
 
 /** Clearing a debt is worth saying so, once. */
 const onDebtSettled = async ({ user, debt }) => {
-  const who = debt.kind === 'BORROWED' ? `paid ${debt.personName} back` : `got your money back from ${debt.personName}`;
-  await push(user._id, {
+  // Two whole sentences rather than one built from a fragment: the clauses do
+  // not sit in the same order in both languages. The person's name is theirs
+  // and is passed through as written.
+  await push(user, {
     type: 'info',
-    title: 'Udhaar settled',
-    message: `You ${who} - ${user.currency} ${debt.originalAmount} is square. Nice.`,
+    key: debt.kind === 'BORROWED' ? 'debtSettledBorrowed' : 'debtSettledLent',
+    values: {
+      person: debt.personName,
+      amount: `${user.currency} ${debt.originalAmount}`,
+    },
     meta: { debtId: debt._id, kind: debt.kind },
     // One per record, ever.
     dedupeKey: `debt-settled:${debt._id}`,
@@ -36,10 +41,10 @@ const onDebtSettled = async ({ user, debt }) => {
 
 /** A goal crossing its target is worth saying so, once. */
 const onGoalReached = async ({ user, goal }) => {
-  await push(user._id, {
+  await push(user, {
     type: 'goal_completed',
-    title: `Goal reached: ${goal.title}`,
-    message: `You saved the full ${user.currency} ${goal.targetAmount}. That is real discipline. Time to set the next one!`,
+    key: 'goalReached',
+    values: { title: goal.title, amount: `${user.currency} ${goal.targetAmount}` },
     meta: { goalId: goal._id },
     // One per goal, ever - re-reaching a goal after a withdrawal says nothing new.
     dedupeKey: `goal-done:${goal._id}`,

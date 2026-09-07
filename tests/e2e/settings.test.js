@@ -123,13 +123,66 @@ const { ok, section, heading, call, report, requireApi, bailIfRateLimited, curre
     x = await call('PUT', '/profile', { financeMode: 'student' }, token);
     ok('and back to student mode', x.status === 200, `-> ${x.status}`);
 
+    // A cancelled record and a settled one, so the export can be checked for
+    // representing both accurately rather than tidying them away.
+    let d = await call('POST', '/debts', { kind: 'LENT', personName: 'QA cancelled', originalAmount: 400 }, token);
+    const cancelledId = d.data?.data?.debt?._id;
+    await call('POST', `/debts/${cancelledId}/cancel`, { reason: 'written off' }, token);
+
+    d = await call('POST', '/debts', { kind: 'BORROWED', personName: 'QA settled', originalAmount: 300 }, token);
+    const settledId = d.data?.data?.debt?._id;
+    await call('POST', `/debts/${settledId}/settle`, {}, token);
+
     x = await call('GET', '/profile/export', undefined, token);
-    const both = JSON.stringify(x.data?.data || x.data || '');
+    const dump = x.data?.data || x.data || {};
+    const both = JSON.stringify(dump);
+
     ok('the export carries the student records', /QA gym fee/.test(both), 'student expense present');
     ok('and the household ones the person is not currently looking at',
       /QA bijli bill/.test(both), 'household expense present');
     ok('and says which modes it covers',
       /"financeModes"/.test(both) && /householder/.test(both), 'financeModes declared');
+
+    // Separated rather than poured into one list, so a reader can tell which
+    // life each record belongs to without inspecting every row.
+    ok('it is organised by finance mode',
+      Boolean(dump.byFinanceMode && dump.byFinanceMode.student && dump.byFinanceMode.householder),
+      Object.keys(dump.byFinanceMode || {}).join(', '));
+    ok('and names itself a complete-account export',
+      dump.scope === 'complete-account', String(dump.scope));
+
+    const studentSection = (dump.byFinanceMode && dump.byFinanceMode.student) || {};
+    const houseSection = (dump.byFinanceMode && dump.byFinanceMode.householder) || {};
+
+    ok('the student section holds only student rows',
+      (studentSection.expenses || []).every((e) => e.financeMode === 'student'),
+      `${(studentSection.expenses || []).length} rows`);
+    ok('the household section holds only household rows',
+      (houseSection.expenses || []).every((e) => e.financeMode === 'householder'),
+      `${(houseSection.expenses || []).length} rows`);
+
+    // Stored ids stay; labels are added beside them, never instead of them.
+    const anyExpense = (houseSection.expenses || [])[0];
+    ok('rows keep their stored category id', Boolean(anyExpense && anyExpense.category),
+      anyExpense && anyExpense.category);
+    ok('and carry a readable label alongside it', Boolean(anyExpense && anyExpense.categoryLabel),
+      anyExpense && anyExpense.categoryLabel);
+
+    // Udhaar, with its ledger and its real statuses.
+    const exportedDebts = studentSection.debts || [];
+    ok('cancelled udhaar is in the export, not dropped',
+      exportedDebts.some((x2) => x2.status === 'CANCELLED'),
+      exportedDebts.map((x2) => x2.status).join(', '));
+    ok('and settled udhaar keeps the ledger that proves what was paid',
+      exportedDebts.some((x2) => x2.status === 'SETTLED' && (x2.payments || []).length > 0),
+      exportedDebts.map((x2) => `${x2.status}:${(x2.payments || []).length}`).join(' '));
+
+    // Goals belong to neither mode and are listed once.
+    ok('goals are listed once, as shared', Array.isArray(dump.shared && dump.shared.goals),
+      `${((dump.shared || {}).goals || []).length} goal(s)`);
+    ok('and are not copied into either mode section',
+      studentSection.goals === undefined && houseSection.goals === undefined,
+      'no duplicate goals');
   }
 
   section('Change password');

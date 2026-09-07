@@ -20,10 +20,12 @@ const income = require('../income/income.service');
 const goals = require('../goals/goals.service');
 const budgets = require('../budgets/budgets.service');
 const advisor = require('../advisor/advisor.service');
+const debts = require('../debts/debts.service');
 const ApiError = require('../../shared/errors/ApiError');
 const { DEFAULT_GOAL_ICON } = require('../../shared/constants');
 const { allCategories, modeOf } = require('../../shared/categories');
-const { MODES, categoryIdsFor, allKnownCategoryIds } = require('@hisabkikitab/contracts/catalogue');
+const catalogue = require('@hisabkikitab/contracts/catalogue');
+const { MODES, categoryIdsFor, allKnownCategoryIds } = catalogue;
 
 const EXPORT_CHAT_LIMIT = 1000;
 
@@ -157,26 +159,57 @@ const removeCategory = async (user, rawName) => {
 /**
  * Everything this person has, for a "download all my data" request.
  *
- * BOTH modes, deliberately. Every other read in the app is scoped to whichever
- * set of books is currently open, and that is right - but a file that calls
- * itself everything and quietly omits the half the person was not looking at
- * is a false answer to a data request. Someone exporting before deleting their
- * account would lose records they were never shown.
+ * BOTH modes, always, and organised by mode rather than poured into one list.
+ * Every other read in the app is scoped to whichever set of books is open, and
+ * that is right - but a file calling itself everything while quietly omitting
+ * the half the person was not looking at is a false answer to a data request.
+ * Someone exporting before deleting their account would lose records they were
+ * never shown.
  *
- * Each row already carries its own `financeMode`, so the two sets stay
- * distinguishable in the file without being split into separate sections.
+ * Three decisions worth naming:
+ *
+ *   - Goals sit at the top level under `shared`, not inside either mode.
+ *     They genuinely are shared, and copying them into both sections would
+ *     make a reader counting their savings count them twice.
+ *
+ *   - Debts come with their ledgers, including cancelled and settled ones. A
+ *     cancelled debt is something that happened and was written off; dropping
+ *     it would misrepresent the account rather than tidy it.
+ *
+ *   - Stored values are the export. Where a label would help a human reading
+ *     the file, it is added ALONGSIDE the id - never instead of it - so the
+ *     file stays portable and re-importable while still being legible.
  */
 const exportEverything = async (user) => {
+  const language = user && user.language;
+
+  /** A row plus a human-readable label for its stored category. */
+  const withLabel = (row, field, kind) => ({
+    ...row,
+    [`${field}Label`]: catalogue.labelForAnyMode(kind, row[field], language),
+  });
+
   // Named apart from the modules they come from: destructuring straight into
   // `expenses` and friends would shadow the imports the calls themselves use.
-  const perMode = await Promise.all(
+  const sections = await Promise.all(
     MODES.map(async (mode) => {
-      const [modeExpenses, modeIncome, modeBudgets] = await Promise.all([
+      const [modeExpenses, modeIncome, modeBudgets, modeDebts] = await Promise.all([
         expenses.listAllForUser(user._id, mode),
         income.listAllForUser(user._id, mode),
         budgets.listAllForUser(user._id, mode),
+        debts.listAllForExport(user._id, mode),
       ]);
-      return { modeExpenses, modeIncome, modeBudgets };
+
+      return [
+        mode,
+        {
+          financeMode: mode,
+          expenses: modeExpenses.map((row) => withLabel(row, 'category', 'expense')),
+          income: modeIncome.map((row) => withLabel(row, 'source', 'income')),
+          budgets: modeBudgets.map((row) => withLabel(row, 'category', 'expense')),
+          debts: modeDebts,
+        },
+      ];
     })
   );
 
@@ -185,19 +218,24 @@ const exportEverything = async (user) => {
     advisor.exportChat(user._id, EXPORT_CHAT_LIMIT),
   ]);
 
-  const gather = (key) => perMode.flatMap((set) => set[key]);
-
   return {
     exportedAt: new Date().toISOString(),
     // Says plainly what the file covers, so nobody has to infer it from the
     // rows or assume it matches the mode they happened to be in.
     financeModes: [...MODES],
+    scope: 'complete-account',
     profile: toPublic(user),
-    expenses: gather('modeExpenses'),
-    incomes: gather('modeIncome'),
-    goals: allGoals,
-    budgets: gather('modeBudgets'),
-    aiConversation: chat,
+
+    // One section per mode, each row still carrying its own financeMode so a
+    // section and a row can never disagree.
+    byFinanceMode: Object.fromEntries(sections),
+
+    // Not inside either mode, because they belong to neither and to both.
+    shared: {
+      note: 'Goals are shared across both finance modes and are listed once.',
+      goals: allGoals,
+      aiConversation: chat,
+    },
   };
 };
 

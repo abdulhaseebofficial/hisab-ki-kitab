@@ -8,7 +8,7 @@ const asyncHandler = require('../../shared/http/asyncHandler');
 
 /** GET /api/notifications - newest first, with the unread count. */
 const listNotifications = asyncHandler(async (req, res) => {
-  const data = await notifications.listForUser(req.user._id, {
+  const data = await notifications.listForUser(req.user, {
     limit: req.query.limit,
     unreadOnly: req.query.unread === 'true',
   });

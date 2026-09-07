@@ -3,6 +3,7 @@ import { Bell, CheckCheck, Trash2 } from 'lucide-react';
 import notificationService from '../api/notificationsApi';
 import useMutation from '../../../shared/hooks/useMutation';
 import { formatRelative, cn } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const TYPE_STYLES = {
   overspend: 'bg-danger/10 text-danger dark:bg-danger/15',
@@ -13,8 +14,25 @@ const TYPE_STYLES = {
   info: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
 };
 
+/**
+ * The badge word for each stored type.
+ *
+ * The type is an identifier - "bill_due" - and printing it with the underscore
+ * swapped for a space is still printing an identifier. Mirrors the keys of
+ * TYPE_STYLES above, so a new type gets both a colour and a word or neither.
+ */
+const TYPE_LABEL_KEYS = {
+  overspend: 'notifications.typeOverspend',
+  bill_due: 'notifications.typeBillDue',
+  goal_deadline: 'notifications.typeGoalDeadline',
+  goal_completed: 'notifications.typeGoalCompleted',
+  log_reminder: 'notifications.typeLogReminder',
+  info: 'notifications.typeInfo',
+};
+
 /** Bell with the unread count and a dropdown tray. */
 export default function NotificationBell() {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
@@ -75,7 +93,7 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={openTray}
-        aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+        aria-label={unread > 0 ? t('notifications.withUnread', { count: unread }) : t('notifications.title')}
         className="relative rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
       >
         <Bell className="h-5 w-5" />
@@ -89,12 +107,12 @@ export default function NotificationBell() {
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-80 origin-top-right animate-slide-up overflow-hidden rounded-2xl border border-slate-200 bg-canvas-card shadow-lift dark:border-slate-700 dark:bg-canvas-darkCard">
           <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Notifications</span>
+            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('notifications.title')}</span>
             <div className="flex gap-1">
               <button
                 type="button"
                 onClick={markAllRead}
-                title="Mark all as read"
+                title={t('notifications.markAllRead')}
                 className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800"
               >
                 <CheckCheck className="h-4 w-4" />
@@ -102,7 +120,7 @@ export default function NotificationBell() {
               <button
                 type="button"
                 onClick={clearAll}
-                title="Clear all"
+                title={t('notifications.clearAll')}
                 className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-danger dark:hover:bg-slate-800"
               >
                 <Trash2 className="h-4 w-4" />
@@ -113,7 +131,7 @@ export default function NotificationBell() {
           <div className="max-h-96 overflow-y-auto">
             {items.length === 0 ? (
               <p className="px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">
-                Nothing here yet. Alerts about overspending, bills and goal deadlines will show up in this tray.
+                {t('notifications.empty')}
               </p>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -129,7 +147,7 @@ export default function NotificationBell() {
                           TYPE_STYLES[item.type] || TYPE_STYLES.info
                         )}
                       >
-                        {item.type.replace('_', ' ')}
+                        {t(TYPE_LABEL_KEYS[item.type] || TYPE_LABEL_KEYS.info)}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.title}</p>

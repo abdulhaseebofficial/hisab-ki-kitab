@@ -23,6 +23,9 @@ const { modeOf } = require('../../shared/categories');
 
 const RECENT_EXPENSE_COUNT = 8;
 
+/** How far ahead "due soon" looks on the dashboard. */
+const BILL_HORIZON_DAYS = 14;
+
 const periodFrom = (query = {}) => {
   const now = currentPeriod();
   return {
@@ -36,12 +39,19 @@ const summary = async (user, query) => {
 
   await materializeForUser(user._id);
 
-  const [snapshot, recent, debtPosition] = await Promise.all([
+  // A household's month is mostly committed before it starts, so what is
+  // already owed matters as much as what has been spent. These are the real
+  // recurring templates falling due - nothing is estimated or projected.
+  const billHorizon = new Date();
+  billHorizon.setDate(billHorizon.getDate() + BILL_HORIZON_DAYS);
+
+  const [snapshot, recent, debtPosition, upcomingBills] = await Promise.all([
     buildSnapshot(user, period),
     expenses.listRecent(user._id, modeOf(user), RECENT_EXPENSE_COUNT),
     // Fetched here rather than by a second request from the browser, and never
     // recomputed there: the debt totals are exact decimal sums in SQL.
     debts.summary(user._id, modeOf(user)),
+    expenses.findBillsDueBy(user._id, modeOf(user), billHorizon),
   ]);
 
   // Fire and forget: the student should not wait on the alert rules.
@@ -79,6 +89,11 @@ const summary = async (user, query) => {
     budgets: snapshot.budgets,
     goals: snapshot.goals,
     recentExpenses: recent.items,
+
+    // Recurring expenses falling due soon, in this mode. Both dashboards get
+    // them; only the householder one leads with them, because a student's
+    // month is rarely shaped by fixed dates.
+    upcomingBills,
 
     // Deliberately its own block, not folded into `totals`. Debt principal is
     // neither income nor spending - see debts.service - so mixing it into the

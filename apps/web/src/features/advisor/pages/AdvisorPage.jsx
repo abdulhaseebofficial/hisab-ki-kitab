@@ -11,14 +11,16 @@ import { useAuth } from '../../auth';
 import useMutation from '../../../shared/hooks/useMutation';
 import aiService from '../api/advisorApi';
 import { cn } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const TABS = [
-  { key: 'chat', label: 'Chat', icon: MessageSquare },
-  { key: 'advice', label: 'Monthly advice', icon: Lightbulb },
-  { key: 'weekly', label: 'Weekly wrap-up', icon: CalendarRange },
+  { key: 'chat', labelKey: 'advisor.tabChat', icon: MessageSquare },
+  { key: 'advice', labelKey: 'advisor.tabAdvice', icon: Lightbulb },
+  { key: 'weekly', labelKey: 'advisor.tabWeekly', icon: CalendarRange },
 ];
 
 export default function AIAdvisor() {
+  const { t } = useT();
   const { user, currency } = useAuth();
   const [tab, setTab] = useState('chat');
   const [status, setStatus] = useState(null);
@@ -53,18 +55,18 @@ export default function AIAdvisor() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="AI Advisor"
+        title={t('advisor.title')}
         badge={
           status && !status.configured ? (
             <Badge tone="warning" icon={WifiOff}>
-              Offline mode
+              {t('advisor.offlineMode')}
             </Badge>
           ) : null
         }
         subtitle={
           status && status.configured
-            ? `Advice written from your actual expenses, budgets and goals${status.model ? ` · ${status.model}` : ''}.`
-            : 'No API key on the server, so the built-in rule-based advisor is answering.'
+            ? t('advisor.subtitleConfigured', { model: status.model ? ` · ${status.model}` : '' })
+            : t('advisor.subtitleOffline')
         }
       />
 
@@ -82,22 +84,22 @@ export default function AIAdvisor() {
             )}
           >
             <option.icon className="h-3.5 w-3.5" aria-hidden="true" />
-            {option.label}
+            {t(option.labelKey)}
           </button>
         ))}
       </div>
 
-      {tab === 'chat' && <ChatBox userName={user ? user.name : 'You'} />}
+      {tab === 'chat' && <ChatBox userName={user ? user.name : t('advisor.you')} />}
 
       {tab === 'advice' && (
         <Card>
           <CardHeader
-            title="This month's advice"
+            title={t('advisor.monthlyAdvice')}
             subtitle={advice && advice.context ? advice.context.monthLabel : undefined}
             icon={Sparkles}
             action={
               <Button variant="ghost" size="sm" icon={RefreshCw} loading={adviceLoading} onClick={loadAdvice}>
-                Refresh
+                {t('advisor.refresh')}
               </Button>
             }
           />
@@ -113,11 +115,11 @@ export default function AIAdvisor() {
       {tab === 'weekly' && (
         <Card>
           <CardHeader
-            title="Your last 7 days"
+            title={t('advisor.last7Days')}
             icon={CalendarRange}
             action={
               <Button variant="ghost" size="sm" icon={RefreshCw} loading={weeklyLoading} onClick={loadWeekly}>
-                Refresh
+                {t('advisor.refresh')}
               </Button>
             }
           />
