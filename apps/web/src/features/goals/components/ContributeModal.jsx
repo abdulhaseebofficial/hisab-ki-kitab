@@ -5,6 +5,7 @@ import Button from '../../../shared/components/ui/Button';
 import Input from '../../../shared/components/ui/Input';
 import ProgressBar from '../../../shared/components/ui/ProgressBar';
 import { currencySymbol, formatMoney, cn } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const QUICK_AMOUNTS = [500, 1000, 2500, 5000];
 
@@ -13,6 +14,7 @@ const QUICK_AMOUNTS = [500, 1000, 2500, 5000];
  * The preview bar shows where the goal will land before anything is saved.
  */
 export default function ContributeModal({ open, goal, currency = 'INR', onClose, onSubmit, submitting }) {
+  const { t } = useT();
   const [mode, setMode] = useState('add');
   const [amount, setAmount] = useState('');
   const [error, setError] = useState('');
@@ -124,7 +126,7 @@ export default function ContributeModal({ open, goal, currency = 'INR', onClose,
             </p>
             <ProgressBar value={projectedPercent} tone={projectedPercent >= 100 ? 'safe' : 'brand'} />
             {projectedPercent >= 100 && (
-              <p className="mt-2 text-xs font-semibold text-safe">That completes this goal. Nice work!</p>
+              <p className="mt-2 text-xs font-semibold text-safe">{t('goals.completesGoal')}</p>
             )}
           </div>
         )}

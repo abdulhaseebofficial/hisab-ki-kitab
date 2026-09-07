@@ -10,6 +10,7 @@ import useMutation from '../../../shared/hooks/useMutation';
 import feedbackService from '../api/feedbackApi';
 import { DEVELOPER, FEEDBACK_TYPES } from '../../../shared/utils/constants';
 import { cn } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const RATING_LABELS = ['Not good', 'Could be better', 'Fine', 'Good', 'Love it'];
 
@@ -21,6 +22,7 @@ const RATING_LABELS = ['Not good', 'Could be better', 'Fine', 'Good', 'Love it']
  * meaningless threes.
  */
 export default function FeedbackModal({ open, onClose }) {
+  const { t } = useT();
   const location = useLocation();
   const { saving, run } = useMutation();
 
@@ -72,13 +74,13 @@ export default function FeedbackModal({ open, onClose }) {
     <Modal
       open={open}
       onClose={close}
-      title="Send feedback"
-      subtitle="Bugs, ideas, or anything that annoyed you - it all helps."
+      title={t('feedback.title')}
+      subtitle={t('feedback.subtitle')}
       size="md"
     >
       <form onSubmit={submit} className="space-y-4">
         <fieldset>
-          <legend className="hw-label">How is it going? (optional)</legend>
+          <legend className="hw-label">{t('feedback.howIsItGoing')}</legend>
           <div className="flex items-center gap-1" onMouseLeave={() => setHovered(0)}>
             {[1, 2, 3, 4, 5].map((value) => (
               <label
@@ -119,17 +121,17 @@ export default function FeedbackModal({ open, onClose }) {
         </fieldset>
 
         <Select
-          label="What is this about?"
+          label={t('feedback.whatAbout')}
           options={FEEDBACK_TYPES}
           value={type}
           onChange={(event) => setType(event.target.value)}
         />
 
         <Textarea
-          label="Your message"
+          label={t('feedback.yourMessage')}
           rows={5}
           autoFocus
-          placeholder="e.g. The budget page should let me set limits for next month too."
+          placeholder={t('feedback.messagePlaceholder')}
           value={message}
           onChange={(event) => setMessage(event.target.value)}
           onBlur={() => setTouched(true)}

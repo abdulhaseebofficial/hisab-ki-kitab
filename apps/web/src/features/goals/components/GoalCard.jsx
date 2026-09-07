@@ -3,12 +3,14 @@ import ProgressBar from '../../../shared/components/ui/ProgressBar';
 import Badge from '../../../shared/components/ui/Badge';
 import Button from '../../../shared/components/ui/Button';
 import { formatDate, formatMoney, cn } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /**
  * A single savings goal: progress, what is left, and the pace needed to hit
  * the deadline. Completed goals switch to a celebration state.
  */
 export default function GoalCard({ goal, currency = 'INR', onContribute, onEdit, onDelete }) {
+  const { t } = useT();
   const { isCompleted, progress, remaining, daysLeft, perDay, perWeek, isOverdue } = goal;
 
   return (
@@ -110,7 +112,7 @@ export default function GoalCard({ goal, currency = 'INR', onContribute, onEdit,
           )}
 
           {!goal.deadline && (
-            <Badge tone="neutral">No deadline set</Badge>
+            <Badge tone="neutral">{t('goals.noDeadline')}</Badge>
           )}
         </div>
       )}

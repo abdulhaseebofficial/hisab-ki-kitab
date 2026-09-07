@@ -159,9 +159,9 @@ export default function DebtsPage() {
       {listError ? (
         <EmptyState
           icon={HandCoins}
-          title="Could not load your udhaar"
+          title={t('udhaar.loadFailed')}
           message={listError}
-          actionLabel="Try again"
+          actionLabel={t('common.retry')}
           onAction={refreshList}
         />
       ) : listLoading ? (

@@ -6,8 +6,10 @@ import { useTheme } from '../providers/ThemeProvider';
 import { initials } from '../../shared/utils/format';
 import BrandMark from '../../shared/components/layout/BrandMark';
 import { NotificationBell } from '../../features/notifications';
+import useT from '../../shared/i18n/I18nProvider';
 
 export default function Navbar({ onOpenMenu, onOpenFeedback }) {
+  const { t } = useT();
   const { user, logout } = useAuth();
   const { isDark, toggle } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,7 +26,7 @@ export default function Navbar({ onOpenMenu, onOpenFeedback }) {
         <button
           type="button"
           onClick={onOpenMenu}
-          aria-label="Open menu"
+          aria-label={t('common.openMenu')}
           className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 lg:hidden dark:text-slate-400 dark:hover:bg-slate-800"
         >
           <Menu className="h-5 w-5" />

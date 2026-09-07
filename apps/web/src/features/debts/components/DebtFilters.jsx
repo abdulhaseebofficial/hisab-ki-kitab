@@ -70,7 +70,7 @@ export default function DebtFilters({ filters, onChange }) {
             type="search"
             value={filters.search || ''}
             onChange={(event) => set({ search: event.target.value })}
-            placeholder="Search a name or note"
+            placeholder={t('udhaar.searchPlaceholder')}
             aria-label={t('udhaar.filters.person')}
             className="hw-input pl-9"
           />
@@ -86,7 +86,7 @@ export default function DebtFilters({ filters, onChange }) {
 
         <Select
           label=""
-          aria-label="Sort records"
+          aria-label={t('udhaar.sortRecords')}
           options={SORTS.map((o) => ({ value: o.value, label: t(o.key) }))}
           value={filters.sort || 'newest'}
           onChange={(event) => set({ sort: event.target.value })}

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/format';
+import useT from '../../i18n/I18nProvider';
 
 const SIZES = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
 
@@ -23,6 +24,7 @@ const focusableIn = (panel) =>
  * they can no longer see.
  */
 export default function Modal({ open, onClose, title, subtitle, children, footer, size = 'md' }) {
+  const { t } = useT();
   const panelRef = useRef(null);
   const openerRef = useRef(null);
   const titleId = useId();
@@ -130,7 +132,7 @@ export default function Modal({ open, onClose, title, subtitle, children, footer
             type="button"
             onClick={onClose}
             data-modal-close=""
-            aria-label="Close dialog"
+            aria-label={t('common.closeDialog')}
             className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
           >
             <X className="h-5 w-5" />

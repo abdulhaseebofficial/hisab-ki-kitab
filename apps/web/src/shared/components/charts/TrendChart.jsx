@@ -14,6 +14,7 @@ import { formatMoney } from '../../utils/format';
 import ChartTooltip from './ChartTooltip';
 import EmptyState from '../ui/EmptyState';
 import { TrendingUp } from 'lucide-react';
+import useT from '../../i18n/I18nProvider';
 
 /**
  * Daily spending through the month. One series, so no legend box is needed -
@@ -21,6 +22,7 @@ import { TrendingUp } from 'lucide-react';
  * which is what makes a spike readable as a spike.
  */
 export default function TrendChart({ data = [], currency = 'INR', average = 0, height = 240 }) {
+  const { t } = useT();
   const { isDark } = useTheme();
   const ink = isDark ? CHART_INK.dark : CHART_INK.light;
   const seriesColor = isDark ? CATEGORIES[0].dark : CATEGORIES[0].light;
@@ -30,8 +32,8 @@ export default function TrendChart({ data = [], currency = 'INR', average = 0, h
     return (
       <EmptyState
         icon={TrendingUp}
-        title="No spending trend yet"
-        message="Log expenses on a few different days to see the shape of your month."
+        title={t('charts.noTrend')}
+        message={t('charts.noTrendMessage')}
       />
     );
   }

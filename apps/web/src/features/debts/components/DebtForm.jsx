@@ -155,7 +155,7 @@ export default function DebtForm({ open, onClose, onSubmit, debt = null, currenc
           <Input
             label={t('udhaar.dueDate')}
             type="date"
-            hint="Optional - we will flag it if it passes"
+            hint={t('udhaar.dueDateHint')}
             {...register('dueDate')}
           />
         </div>

@@ -3,6 +3,7 @@ import { ArrowRight, CalendarClock, HandCoins } from 'lucide-react';
 import Card, { CardHeader } from '../../../shared/components/ui/Card';
 import { StatusBadge } from './DebtBadges';
 import { cn, formatMoney, formatDate } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /**
  * The dashboard's view of udhaar: the position, and anything about to bite.
@@ -15,6 +16,7 @@ import { cn, formatMoney, formatDate } from '../../../shared/utils/format';
  * never disagree.
  */
 export default function DebtWidget({ debts, currency = 'PKR' }) {
+  const { t } = useT();
   if (!debts) return null;
 
   const { payable = 0, receivable = 0, netBalance = 0, dueSoon = [], overdueCount = 0 } = debts;
@@ -50,13 +52,13 @@ export default function DebtWidget({ debts, currency = 'PKR' }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">You have to pay</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('udhaar.summary.payable')}</p>
           <p className="text-base font-bold tabular-nums text-danger">
             {formatMoney(payable, currency)}
           </p>
         </div>
         <div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">You have to receive</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('udhaar.summary.receivable')}</p>
           <p className="text-base font-bold tabular-nums text-slate-900 dark:text-slate-100">
             {formatMoney(receivable, currency)}
           </p>

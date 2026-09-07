@@ -9,13 +9,14 @@ import useT from '../../../shared/i18n/I18nProvider';
 import useCategoryLabel from '../../../shared/i18n/useCategoryLabel';
 
 export default function RecentTransactions({ expenses = [], currency = 'INR', onAdd }) {
+  const { t } = useT();
   const label = useCategoryLabel();
   const { isDark } = useTheme();
 
   return (
     <Card>
       <CardHeader
-        title="Recent transactions"
+        title={t('dashboard.recentTransactions')}
         icon={Receipt}
         action={
           expenses.length > 0 && (
@@ -33,9 +34,9 @@ export default function RecentTransactions({ expenses = [], currency = 'INR', on
       {expenses.length === 0 ? (
         <EmptyState
           icon={Receipt}
-          title="No expenses yet"
-          message="Add your first one and the dashboard comes alive."
-          actionLabel="Add expense"
+          title={t('dashboard.noExpensesYet')}
+          message={t('dashboard.noExpensesMessage')}
+          actionLabel={t('expenses.add')}
           onAction={onAdd}
         />
       ) : (

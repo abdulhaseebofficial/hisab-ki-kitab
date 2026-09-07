@@ -1,5 +1,6 @@
 import Input from '../../../shared/components/ui/Input';
 import { cn, currencySymbol } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /**
  * Amounts a hostel student in Pakistan actually saves for. Picking one fills
@@ -15,6 +16,7 @@ const SUGGESTED_GOALS = [
 
 /** Skippable: a student with no goal in mind should still reach the dashboard. */
 export default function GoalStep({ form, onChange }) {
+  const { t } = useT();
   return (
     <>
       <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -53,14 +55,14 @@ export default function GoalStep({ form, onChange }) {
       </div>
 
       <Input
-        label="Goal name"
-        placeholder="What are you saving for?"
+        label={t('goals.goalName')}
+        placeholder={t('goals.savingFor')}
         value={form.goalTitle}
         onChange={(event) => onChange({ goalTitle: event.target.value })}
       />
 
       <Input
-        label="Target amount"
+        label={t('goals.targetAmount')}
         type="number"
         inputMode="decimal"
         placeholder="20000"

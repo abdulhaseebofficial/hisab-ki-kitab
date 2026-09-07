@@ -7,6 +7,8 @@ import Select from '../../../shared/components/ui/Select';
 import Button from '../../../shared/components/ui/Button';
 import { PAYMENT_METHODS, RECURRING_FREQUENCIES, categoryColor, categoryEmoji } from '../../../shared/utils/constants';
 import { cn, currencySymbol, formatMoney, toInputDate } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
+import { useAuth } from '../../auth';
 
 // Mirrors the backend validators so the student is told about a bad value
 // before a request is even sent.
@@ -28,6 +30,9 @@ const schema = z.object({
 const QUICK_AMOUNTS = [50, 100, 200, 500, 1000];
 
 export default function ExpenseForm({ expense, categories = [], currency = 'PKR', onSubmit, onCancel, submitting }) {
+  const { t } = useT();
+  const { user } = useAuth();
+  const householder = Boolean(user && user.financeMode === 'householder');
   const {
     register,
     handleSubmit,
@@ -156,23 +161,23 @@ export default function ExpenseForm({ expense, categories = [], currency = 'PKR'
             );
           })}
           {categories.length === 0 && (
-            <span className="text-xs text-slate-500 dark:text-slate-400">Loading categories...</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t('expenses.loadingCategories')}</span>
           )}
         </div>
         {errors.category && <p className="hw-error">{errors.category.message}</p>}
       </fieldset>
 
       <Input
-        label="What was it for?"
-        hint="Optional, but future you will be glad you wrote it down."
-        placeholder="e.g. Dhaba lunch with roommates"
+        label={t('expenses.whatFor')}
+        hint={t('expenses.whatForHint')}
+        placeholder={t(householder ? 'expenses.whatForPlaceholderHouseholder' : 'expenses.whatForPlaceholderStudent')}
         error={errors.description && errors.description.message}
         {...register('description')}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Select
-          label="Paid with"
+          label={t('expenses.paidWith')}
           options={PAYMENT_METHODS}
           error={errors.paymentMethod && errors.paymentMethod.message}
           {...register('paymentMethod')}
@@ -207,7 +212,7 @@ export default function ExpenseForm({ expense, categories = [], currency = 'PKR'
         {isRecurring && (
           <Select
             className="mt-3"
-            label="How often"
+            label={t('expenses.howOften')}
             options={RECURRING_FREQUENCIES}
             {...register('recurringFrequency')}
           />

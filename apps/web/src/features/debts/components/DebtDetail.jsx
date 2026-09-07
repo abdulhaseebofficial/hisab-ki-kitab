@@ -88,7 +88,7 @@ export default function DebtDetail({
 
         <dl className="grid gap-3 text-xs sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500 dark:text-slate-400">Taken on</dt>
+            <dt className="text-slate-500 dark:text-slate-400">{t('udhaar.transactionDate')}</dt>
             <dd className="font-medium text-slate-800 dark:text-slate-200">
               {formatDate(debt.transactionDate)}
             </dd>
@@ -183,8 +183,8 @@ export default function DebtDetail({
           </p>
           {payments.length === 0 ? (
             <EmptyState
-              title="Nothing paid yet"
-              message="Every payment you record will be listed here with its date."
+              title={t('udhaar.nothingPaidYet')}
+              message={t('udhaar.everyPaymentListed')}
             />
           ) : (
             <ul className="space-y-1.5">

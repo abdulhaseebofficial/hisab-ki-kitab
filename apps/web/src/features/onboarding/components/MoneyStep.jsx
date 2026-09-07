@@ -2,21 +2,24 @@ import Input from '../../../shared/components/ui/Input';
 import Select from '../../../shared/components/ui/Select';
 import { CURRENCIES } from '../../../shared/utils/constants';
 import { currencySymbol } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /** Common starting points, so the first field is a tap rather than typing. */
 const QUICK_AMOUNTS = [15000, 20000, 25000, 35000];
 
 /** The only step that cannot be skipped: everything else is sized against it. */
 export default function MoneyStep({ form, onChange }) {
+  const { t } = useT();
   return (
     <>
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        How much do you have to work with each month? Pocket money, allowance, part-time pay - the total you
-        expect to receive.
+        {t(form.financeMode === 'householder'
+          ? 'onboarding.incomeQuestionHouseholder'
+          : 'onboarding.incomeQuestionStudent')}
       </p>
 
       <Input
-        label="Monthly pocket money"
+        label={t(form.financeMode === 'householder' ? 'settings.monthlyHouseholdIncome' : 'settings.monthlyPocketMoney')}
         type="number"
         inputMode="decimal"
         placeholder="25000"
@@ -24,11 +27,11 @@ export default function MoneyStep({ form, onChange }) {
         prefix={currencySymbol(form.currency)}
         value={form.monthlyIncome}
         onChange={(event) => onChange({ monthlyIncome: event.target.value })}
-        hint="You can change this any time in Settings"
+        hint={t('settings.incomeHint')}
       />
 
       <Select
-        label="Currency"
+        label={t('onboarding.currency')}
         options={CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol}  ${c.label}` }))}
         value={form.currency}
         onChange={(event) => onChange({ currency: event.target.value })}

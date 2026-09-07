@@ -29,12 +29,13 @@ export const MOBILE_NAV_ITEMS = NAV_ITEMS.filter((item) =>
   ['/dashboard', '/expenses', '/goals', '/advisor'].includes(item.to)
 );
 
-function NavItems({ onNavigate }) {
+function NavItems({ onNavigate, mode }) {
+  const items = mode === 'shared_living' ? NAV_ITEMS.filter((item) => ['/dashboard', '/settings'].includes(item.to)) : NAV_ITEMS;
   const { t } = useT();
 
   return (
     <nav className="space-y-1">
-      {NAV_ITEMS.map(({ to, key, icon: Icon }) => (
+      {items.map(({ to, key, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}
@@ -59,7 +60,7 @@ function NavItems({ onNavigate }) {
  * Desktop rail plus the mobile drawer. Both render the same list so a new
  * screen only has to be added to NAV_ITEMS once.
  */
-export default function Sidebar({ open, onClose }) {
+export default function Sidebar({ open, onClose, mode }) {
   const { t } = useT();
   /*
    * While the drawer is open the page behind it must not scroll: on a phone,
@@ -89,7 +90,7 @@ export default function Sidebar({ open, onClose }) {
         list, so a small laptop still reaches Settings.
       */}
       <aside className="hidden w-60 shrink-0 overflow-y-auto border-r border-slate-200 bg-canvas-card px-3 py-4 lg:block lg:h-full dark:border-slate-800 dark:bg-canvas-darkCard">
-        <NavItems />
+        <NavItems mode={mode} />
       </aside>
 
       {/* Mobile drawer */}
@@ -108,7 +109,7 @@ export default function Sidebar({ open, onClose }) {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <NavItems onNavigate={onClose} />
+            <NavItems onNavigate={onClose} mode={mode} />
           </aside>
         </div>
       )}

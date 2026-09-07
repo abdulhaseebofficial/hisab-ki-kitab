@@ -1,18 +1,20 @@
 import { Monitor, Moon, Sun } from 'lucide-react';
 import Card, { CardHeader } from '../../../shared/components/ui/Card';
 import { cn } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const THEME_OPTIONS = [
-  { key: 'light', label: 'Light', icon: Sun },
-  { key: 'dark', label: 'Dark', icon: Moon },
-  { key: 'system', label: 'System', icon: Monitor },
+  { key: 'light', labelKey: 'settings.themeLight', icon: Sun },
+  { key: 'dark', labelKey: 'settings.themeDark', icon: Moon },
+  { key: 'system', labelKey: 'settings.themeSystem', icon: Monitor },
 ];
 
 /** Light, dark, or follow the device. */
 export default function AppearanceCard({ theme, onChange }) {
+  const { t } = useT();
   return (
     <Card>
-      <CardHeader title="Appearance" subtitle="Dark mode is easier on the eyes in a hostel room at 2am" />
+      <CardHeader title={t('settings.appearance')} subtitle={t('settings.appearanceSubtitle')} />
       <div className="grid grid-cols-3 gap-2">
         {THEME_OPTIONS.map((option) => (
           <button
@@ -27,7 +29,7 @@ export default function AppearanceCard({ theme, onChange }) {
             )}
           >
             <option.icon className="h-5 w-5" aria-hidden="true" />
-            {option.label}
+            {t(option.labelKey)}
           </button>
         ))}
       </div>

@@ -2,23 +2,25 @@ import Modal from '../../../shared/components/ui/Modal';
 import Button from '../../../shared/components/ui/Button';
 import PasswordInput from '../../../shared/components/ui/PasswordInput';
 import PasswordChecklist from '../../../shared/components/ui/PasswordChecklist';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /** Changing the password signs every other device out. */
 export default function ChangePasswordModal({ open, onClose, form, onSubmit }) {
+  const { t } = useT();
   const { errors, isSubmitting } = form.formState;
 
   return (
-    <Modal open={open} onClose={onClose} title="Change your password" size="sm">
+    <Modal open={open} onClose={onClose} title={t('settings.changePassword')} size="sm">
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <PasswordInput
-          label="Current password"
+          label={t('settings.currentPassword')}
           autoComplete="current-password"
           error={errors.currentPassword && errors.currentPassword.message}
           {...form.register('currentPassword')}
         />
         <div className="space-y-2">
           <PasswordInput
-            label="New password"
+            label={t('auth.newPassword')}
             autoComplete="new-password"
             error={errors.newPassword && errors.newPassword.message}
             {...form.register('newPassword')}
@@ -29,7 +31,7 @@ export default function ChangePasswordModal({ open, onClose, form, onSubmit }) {
           <PasswordChecklist value={form.watch('newPassword') || ''} />
         </div>
         <PasswordInput
-          label="Confirm new password"
+          label={t('auth.confirmNewPassword')}
           autoComplete="new-password"
           error={errors.confirmPassword && errors.confirmPassword.message}
           {...form.register('confirmPassword')}

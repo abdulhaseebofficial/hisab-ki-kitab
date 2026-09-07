@@ -162,7 +162,7 @@ export default function Settings() {
 
   return (
     <div className="max-w-3xl space-y-5">
-      <PageHeader title="Settings" subtitle="Your profile, your categories, your data." />
+      <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
       <ProfileCard user={user} form={profileForm} onSave={saveProfile} />
 

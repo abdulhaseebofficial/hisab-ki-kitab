@@ -4,6 +4,7 @@ import Button from '../../../shared/components/ui/Button';
 import Input from '../../../shared/components/ui/Input';
 import Select from '../../../shared/components/ui/Select';
 import { CURRENCIES } from '../../../shared/utils/constants';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /**
  * Name, pocket money, currency and where the student lives.
@@ -12,6 +13,8 @@ import { CURRENCIES } from '../../../shared/utils/constants';
  * knows what saving means; this only lays it out.
  */
 export default function ProfileCard({ user, form, onSave }) {
+  const { t } = useT();
+  const householder = Boolean(user && user.financeMode === 'householder');
   const { errors, isSubmitting } = form.formState;
 
   return (
@@ -20,12 +23,12 @@ export default function ProfileCard({ user, form, onSave }) {
       <form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
-            label="Full name"
+            label={t('settings.fullName')}
             error={errors.name && errors.name.message}
             {...form.register('name')}
           />
           <Input
-            label="Monthly pocket money"
+            label={t(householder ? 'settings.monthlyHouseholdIncome' : 'settings.monthlyPocketMoney')}
             type="number"
             inputMode="decimal"
             error={errors.monthlyIncome && errors.monthlyIncome.message}
@@ -42,7 +45,7 @@ export default function ProfileCard({ user, form, onSave }) {
           <Input label="University" placeholder="Optional" {...form.register('university')} />
         </div>
 
-        <Input label="Hostel name" placeholder="Optional" {...form.register('hostelName')} />
+        <Input label={t('settings.hostelName')} placeholder="Optional" {...form.register('hostelName')} />
 
         <div className="flex justify-end">
           <Button type="submit" loading={isSubmitting}>

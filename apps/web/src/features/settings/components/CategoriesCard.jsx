@@ -2,6 +2,7 @@ import { Plus, Tag, X } from 'lucide-react';
 import Card, { CardHeader } from '../../../shared/components/ui/Card';
 import Button from '../../../shared/components/ui/Button';
 import { CATEGORY_NAMES } from '../../../shared/utils/constants';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /**
  * The built-in categories, plus whatever the student has added.
@@ -17,9 +18,10 @@ export default function CategoriesCard({
   onAdd,
   onRemove,
 }) {
+  const { t } = useT();
   return (
     <Card>
-      <CardHeader title="Categories" subtitle="Add your own on top of the built-in ones" icon={Tag} />
+      <CardHeader title="Categories" subtitle={t('settings.categoriesSubtitle')} icon={Tag} />
 
       <div className="mb-4 flex flex-wrap gap-1.5">
         {CATEGORY_NAMES.map((name) => (
@@ -59,8 +61,8 @@ export default function CategoriesCard({
               onAdd();
             }
           }}
-          placeholder="e.g. Gym membership"
-          aria-label="New category name"
+          placeholder={t('settings.newCategoryPlaceholder')}
+          aria-label={t('settings.newCategoryName')}
           className="hw-input flex-1"
         />
         <Button icon={Plus} onClick={onAdd} disabled={!newCategory.trim()}>

@@ -4,12 +4,14 @@ import Card, { CardHeader } from '../../../shared/components/ui/Card';
 import EmptyState from '../../../shared/components/ui/EmptyState';
 import ProgressBar from '../../../shared/components/ui/ProgressBar';
 import { formatMoney } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 export default function GoalsPreview({ goals = [], currency = 'INR', onCreate }) {
+  const { t } = useT();
   return (
     <Card>
       <CardHeader
-        title="Savings goals"
+        title={t('dashboard.savingsGoals')}
         icon={Target}
         action={
           goals.length > 0 && (
@@ -27,9 +29,9 @@ export default function GoalsPreview({ goals = [], currency = 'INR', onCreate })
       {goals.length === 0 ? (
         <EmptyState
           icon={Target}
-          title="No goals yet"
-          message="A goal turns leftover money into something you actually want."
-          actionLabel="Create a goal"
+          title={t('dashboard.noGoalsYet')}
+          message={t('dashboard.noGoalsMessage')}
+          actionLabel={t('dashboard.createGoal')}
           onAction={onCreate}
         />
       ) : (

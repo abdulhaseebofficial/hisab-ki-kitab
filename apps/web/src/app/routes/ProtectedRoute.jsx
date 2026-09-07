@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../features/auth/index';
 import { PageSpinner } from '../../shared/components/ui/Spinner';
+import useT from '../../shared/i18n/I18nProvider';
 
 /**
  * Gate for every authenticated route.
@@ -13,7 +14,7 @@ export default function ProtectedRoute({ requireOnboarding = true }) {
   const { isAuthenticated, loading, needsOnboarding } = useAuth();
   const location = useLocation();
 
-  if (loading) return <PageSpinner label="Getting your wallet ready" />;
+  if (loading) return <PageSpinner label={t('app.gettingReady')} />;
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;

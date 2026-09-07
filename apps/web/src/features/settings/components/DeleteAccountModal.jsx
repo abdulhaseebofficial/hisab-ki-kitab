@@ -1,6 +1,7 @@
 import Modal from '../../../shared/components/ui/Modal';
 import Button from '../../../shared/components/ui/Button';
 import PasswordInput from '../../../shared/components/ui/PasswordInput';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /**
  * The password is required so a stolen access token on its own cannot wipe an
@@ -8,11 +9,12 @@ import PasswordInput from '../../../shared/components/ui/PasswordInput';
  * left to export.
  */
 export default function DeleteAccountModal({ open, onClose, password, onPasswordChange, onConfirm, busy }) {
+  const { t } = useT();
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Delete your account?"
+      title={t('settings.deleteAccountTitle')}
       size="sm"
       footer={
         <>
@@ -31,7 +33,7 @@ export default function DeleteAccountModal({ open, onClose, password, onPassword
           undone. Consider exporting your data first.
         </p>
         <PasswordInput
-          label="Type your password to confirm"
+          label={t('settings.typePasswordToConfirm')}
           autoComplete="current-password"
           value={password}
           onChange={(event) => onPasswordChange(event.target.value)}

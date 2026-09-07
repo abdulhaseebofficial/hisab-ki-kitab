@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import Navbar from './Navbar';
 import Sidebar, { MOBILE_NAV_ITEMS } from './Sidebar';
@@ -51,12 +51,16 @@ function QuickAddForm({ onDone, onCancel }) {
  * tab bar on phones (which is where a student actually logs an expense).
  */
 export default function AppLayout() {
+  const { user } = useAuth();
+  const shared = user?.financeMode === 'shared_living';
+  const location = useLocation();
+  const mobileItems = shared ? MOBILE_NAV_ITEMS.filter((item) => item.to === '/dashboard') : MOBILE_NAV_ITEMS;
   const [menuOpen, setMenuOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { t } = useT();
 
-  const openQuickAdd = useCallback(() => setQuickAddOpen(true), []);
+  const openQuickAdd = useCallback(() => { if (!shared) setQuickAddOpen(true); }, [shared]);
   const closeQuickAdd = useCallback(() => setQuickAddOpen(false), []);
   const openFeedback = useCallback(() => setFeedbackOpen(true), []);
   const closeFeedback = useCallback(() => setFeedbackOpen(false), []);
@@ -74,7 +78,7 @@ export default function AppLayout() {
    * is positioned against.
    */
   return (
-    <QuickAddProvider open={openQuickAdd}>
+    <QuickAddProvider open={shared ? undefined : openQuickAdd}>
       <div className="flex min-h-full flex-col bg-canvas-light lg:h-full lg:min-h-0 lg:overflow-hidden dark:bg-canvas-dark">
       <a href="#main-content" className="hw-skip-link">
         {t('nav.skipToContent')}
@@ -83,12 +87,12 @@ export default function AppLayout() {
       <Navbar onOpenMenu={() => setMenuOpen(true)} onOpenFeedback={openFeedback} />
 
       <div className="flex flex-1 lg:min-h-0 lg:overflow-hidden">
-        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
+        <Sidebar mode={user?.financeMode} open={menuOpen} onClose={() => setMenuOpen(false)} />
 
         <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 lg:h-full lg:overflow-y-auto">
           {/* pb-28 leaves room for the mobile tab bar and its raised button */}
           <div className="mx-auto w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-10">
-            <Outlet />
+            {shared && !['/dashboard', '/settings'].includes(location.pathname) ? <Navigate to="/dashboard" replace /> : <Outlet />}
           </div>
           <div className="hidden lg:block">
             <Footer onOpenFeedback={openFeedback} />
@@ -102,33 +106,33 @@ export default function AppLayout() {
         className="hw-safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-canvas-card/95 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-canvas-darkCard/95"
       >
         <ul className="mx-auto flex max-w-md items-end">
-          {MOBILE_NAV_ITEMS.slice(0, 2).map((item) => (
+          {mobileItems.slice(0, 2).map((item) => (
             <MobileTab key={item.to} item={item} />
           ))}
 
-          <li className="flex flex-1 justify-center">
+          {!shared && <li className="flex flex-1 justify-center">
             {/* -mt-6 lifts it out of the bar so it reads as the primary action. */}
             <button
               type="button"
               onClick={openQuickAdd}
-              aria-label="Add an expense"
+              aria-label={t('nav.addAnExpense')}
               className="hw-fab -mt-6 mb-1.5"
             >
               <Plus className="h-6 w-6" aria-hidden="true" />
             </button>
-          </li>
+          </li>}
 
-          {MOBILE_NAV_ITEMS.slice(2).map((item) => (
+          {mobileItems.slice(2).map((item) => (
             <MobileTab key={item.to} item={item} />
           ))}
         </ul>
       </nav>
 
       <Modal
-        open={quickAddOpen}
+        open={quickAddOpen && !shared}
         onClose={closeQuickAdd}
-        title="Add an expense"
-        subtitle="Logged against today unless you change the date"
+        title={t('nav.addAnExpense')}
+        subtitle={t('nav.loggedAgainstToday')}
         size="md"
       >
         <QuickAddForm onDone={closeQuickAdd} onCancel={closeQuickAdd} />
