@@ -2,11 +2,14 @@ import { PiggyBank, Sparkles, TrendingDown } from 'lucide-react';
 import BrandMark from '../../../shared/components/layout/BrandMark';
 import ContactLinks from '../../../shared/components/ContactLinks';
 import { DEVELOPER } from '../../../shared/utils/constants';
+import useT from '../../../shared/i18n/I18nProvider';
 
+// Keys rather than text: this panel is the first thing a signed-out visitor
+// reads, and it has to be in their language before there is a profile to ask.
 const HIGHLIGHTS = [
-  { icon: PiggyBank, title: 'Know where it goes', text: 'Mess, chai, rickshaw, mobile load - every rupee in one place.' },
-  { icon: Sparkles, title: 'AI money coach', text: 'Advice written for hostel life, from your own numbers.' },
-  { icon: TrendingDown, title: 'Stop the leaks', text: 'Budgets warn you before the month runs out, not after.' },
+  { icon: PiggyBank, title: 'authShell.knowTitle', text: 'authShell.knowText' },
+  { icon: Sparkles, title: 'authShell.coachTitle', text: 'authShell.coachText' },
+  { icon: TrendingDown, title: 'authShell.leaksTitle', text: 'authShell.leaksText' },
 ];
 
 /**
@@ -14,6 +17,8 @@ const HIGHLIGHTS = [
  * the form on the right.
  */
 export default function AuthShell({ title, subtitle, children, footer }) {
+  const { t } = useT();
+
   return (
     <div className="flex min-h-full">
       {/*
@@ -30,22 +35,21 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           <BrandMark to="/" inverted className="mb-12" />
 
           <h1 className="text-3xl font-extrabold leading-[1.15] xl:text-4xl">
-            Make your pocket money last the whole month.
+            {t('authShell.headline')}
           </h1>
           <p className="mt-4 max-w-md text-sm leading-relaxed text-brand-100">
-            Built for hostel students in Pakistan, where the budget is small, the mess bill is fixed and the dhaba is
-            always open.
+            {t('authShell.lede')}
           </p>
 
           <ul className="mt-10 space-y-5">
-            {HIGHLIGHTS.map(({ icon: Icon, title: heading, text }) => (
-              <li key={heading} className="flex gap-3.5">
+            {HIGHLIGHTS.map(({ icon: Icon, title: headingKey, text: textKey }) => (
+              <li key={headingKey} className="flex gap-3.5">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
                   <Icon className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold">{heading}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-brand-100">{text}</p>
+                  <p className="text-sm font-semibold">{t(headingKey)}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-brand-100">{t(textKey)}</p>
                 </div>
               </li>
             ))}
@@ -53,7 +57,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         </div>
 
         <p className="absolute inset-x-10 bottom-10 text-xs text-brand-100/90 xl:inset-x-14 xl:bottom-14">
-          Your data stays yours. Export or delete everything from Settings, any time.
+          {t('authShell.dataIsYours')}
         </p>
       </aside>
 
@@ -78,7 +82,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           */}
           <div className="mt-10 border-t border-slate-200 pt-5 text-center dark:border-slate-800">
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Something broken or an idea to share? Reach {DEVELOPER.name}:
+              {t('authShell.reachOut', { name: DEVELOPER.name })}
             </p>
             <div className="mt-2.5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-slate-500 dark:text-slate-400">
               <ContactLinks />

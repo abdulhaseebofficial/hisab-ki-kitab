@@ -58,6 +58,27 @@ const labelFor = (kind, mode, id, language) => {
   return entry[safeLanguage(language)] || entry.en || entry.id;
 };
 
+/**
+ * A category's label without being told which mode it came from.
+ *
+ * Rendering a stored id is the failure this exists to prevent: a chart legend
+ * reading "electricity_bill" or "student_savings" tells a person nothing and
+ * looks like a bug in their own records. Callers that display a row - a chart,
+ * a report line, a transaction - know the id and the language but often not
+ * the mode, because the row carries its own.
+ *
+ * Both modes are searched. Ids are unique across them, and a row from the
+ * other mode is never on screen anyway. Anything still unmatched is returned
+ * as written, which is exactly right for a category the person invented.
+ */
+const labelForAnyMode = (kind, id, language) => {
+  for (const mode of MODES) {
+    const entry = categoriesFor(kind, mode).find((item) => item.id === id);
+    if (entry) return entry[safeLanguage(language)] || entry.en || entry.id;
+  }
+  return String(id == null ? '' : id);
+};
+
 /** True when picking this category obliges the person to say more. */
 const requiresNote = (kind, mode, id) => {
   const entry = categoriesFor(kind, mode).find((item) => item.id === id);
@@ -137,6 +158,7 @@ module.exports = {
   categoriesFor,
   categoryIdsFor,
   labelFor,
+  labelForAnyMode,
   requiresNote,
   lookup,
   idsOf,

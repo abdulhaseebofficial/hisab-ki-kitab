@@ -12,8 +12,10 @@ import { useTheme } from '../../../app/providers/ThemeProvider';
 import { CATEGORIES, CHART_INK, inCategoryOrder } from '../../utils/constants';
 import { formatMoney } from '../../utils/format';
 import ChartTooltip from './ChartTooltip';
+import useCategoryLabel from '../../i18n/useCategoryLabel';
 import EmptyState from '../ui/EmptyState';
 import { BarChart3 } from 'lucide-react';
+import useT from '../../i18n/I18nProvider';
 
 /**
  * This month against last month, category by category.
@@ -25,24 +27,34 @@ import { BarChart3 } from 'lucide-react';
 export default function ComparisonChart({
   rows = [],
   currency = 'INR',
-  currentLabel = 'This month',
-  previousLabel = 'Last month',
+  currentLabel,
+  previousLabel,
   height = 280,
 }) {
+  const { t } = useT();
+  const label = useCategoryLabel();
+
+  // Resolved here rather than in the parameter list: a default written as a
+  // literal is a default in English, whatever the reader chose.
+  const currentName = currentLabel || t('charts.thisMonth');
+  const previousName = previousLabel || t('charts.lastMonth');
   const { isDark } = useTheme();
   const ink = isDark ? CHART_INK.dark : CHART_INK.light;
 
   const currentColor = isDark ? CATEGORIES[0].dark : CATEGORIES[0].light;
   const previousColor = isDark ? CATEGORIES[1].dark : CATEGORIES[1].light;
 
-  const data = inCategoryOrder(rows).filter((row) => row.current > 0 || row.previous > 0);
+  // The axis shows the label, not the stored id.
+  const data = inCategoryOrder(rows)
+    .filter((row) => row.current > 0 || row.previous > 0)
+    .map((row) => ({ ...row, label: label(row.category) }));
 
   if (!data.length) {
     return (
       <EmptyState
         icon={BarChart3}
-        title="Not enough history yet"
-        message="Once you have two months of expenses, the comparison shows up here."
+        title={t('charts.notEnoughHistory')}
+        message={t('charts.notEnoughHistoryMessage')}
       />
     );
   }
@@ -54,7 +66,7 @@ export default function ComparisonChart({
           <CartesianGrid stroke={ink.grid} strokeDasharray="3 3" vertical={false} />
 
           <XAxis
-            dataKey="category"
+            dataKey="label"
             tick={{ fill: ink.muted, fontSize: 10 }}
             tickLine={false}
             axisLine={{ stroke: ink.axis }}
@@ -80,8 +92,8 @@ export default function ComparisonChart({
             formatter={(value) => <span style={{ color: ink.muted }}>{value}</span>}
           />
 
-          <Bar dataKey="previous" name={previousLabel} fill={previousColor} radius={[4, 4, 0, 0]} maxBarSize={22} />
-          <Bar dataKey="current" name={currentLabel} fill={currentColor} radius={[4, 4, 0, 0]} maxBarSize={22} />
+          <Bar dataKey="previous" name={previousName} fill={previousColor} radius={[4, 4, 0, 0]} maxBarSize={22} />
+          <Bar dataKey="current" name={currentName} fill={currentColor} radius={[4, 4, 0, 0]} maxBarSize={22} />
         </BarChart>
       </ResponsiveContainer>
     </div>

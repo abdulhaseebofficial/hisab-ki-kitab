@@ -5,12 +5,15 @@ import Select from '../../../shared/components/ui/Select';
 import Input from '../../../shared/components/ui/Input';
 import { PAYMENT_METHODS } from '../../../shared/utils/constants';
 import { cn } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
+// Keys, not labels: the preset a person picked must survive a language
+// change, and only the word on the pill is allowed to move.
 const PRESETS = [
-  { key: 'all', label: 'All time' },
-  { key: 'week', label: 'Last 7 days' },
-  { key: 'month', label: 'This month' },
-  { key: 'prev', label: 'Last month' },
+  { key: 'all', labelKey: 'filters.allTime' },
+  { key: 'week', labelKey: 'filters.last7Days' },
+  { key: 'month', labelKey: 'filters.thisMonth' },
+  { key: 'prev', labelKey: 'filters.lastMonth' },
 ];
 
 /** Turns a preset key into a from/to pair. */
@@ -44,25 +47,29 @@ export const presetRange = (key) => {
  * expenses have gone missing.
  */
 export default function ExpenseFilters({ filters, onChange, onReset, categories = [], resultCount }) {
+  const { t } = useT();
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const set = (patch) => onChange({ ...filters, ...patch, page: 1 });
 
   // One entry per narrowing filter, each able to clear just itself.
   const activeChips = [
-    filters.search && { key: 'search', label: `Search: ${filters.search}`, clear: { search: '' } },
+    filters.search && { key: 'search', label: t('filters.chipSearch', { value: filters.search }), clear: { search: '' } },
     filters.category && { key: 'category', label: filters.category, clear: { category: '' } },
     filters.paymentMethod && {
       key: 'paymentMethod',
-      label: `Paid with ${filters.paymentMethod}`,
+      label: t('filters.chipPaidWith', { value: filters.paymentMethod }),
       clear: { paymentMethod: '' },
     },
-    filters.minAmount && { key: 'minAmount', label: `Min ${filters.minAmount}`, clear: { minAmount: '' } },
-    filters.maxAmount && { key: 'maxAmount', label: `Max ${filters.maxAmount}`, clear: { maxAmount: '' } },
+    filters.minAmount && { key: 'minAmount', label: t('filters.chipMin', { value: filters.minAmount }), clear: { minAmount: '' } },
+    filters.maxAmount && { key: 'maxAmount', label: t('filters.chipMax', { value: filters.maxAmount }), clear: { maxAmount: '' } },
     filters.preset === 'custom' &&
       (filters.from || filters.to) && {
         key: 'range',
-        label: `${filters.from || 'start'} to ${filters.to || 'today'}`,
+        label: t('filters.chipRange', {
+          from: filters.from || t('filters.rangeStart'),
+          to: filters.to || t('filters.rangeToday'),
+        }),
         clear: { preset: 'month', ...presetRange('month') },
       },
   ].filter(Boolean);
@@ -83,15 +90,15 @@ export default function ExpenseFilters({ filters, onChange, onReset, categories 
             type="search"
             value={filters.search}
             onChange={(event) => set({ search: event.target.value })}
-            placeholder="Search description or category"
-            aria-label="Search expenses"
+            placeholder={t('expenses.searchPlaceholder')}
+            aria-label={t('expenses.searchLabel')}
             className={cn('hw-input pl-10', filters.search && 'pr-10')}
           />
           {filters.search && (
             <button
               type="button"
               onClick={() => set({ search: '' })}
-              aria-label="Clear search"
+              aria-label={t('expenses.clearSearch')}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
             >
               <X className="h-4 w-4" />
@@ -129,7 +136,7 @@ export default function ExpenseFilters({ filters, onChange, onReset, categories 
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
             )}
           >
-            {preset.label}
+            {t(preset.labelKey)}
           </button>
         ))}
 
@@ -138,21 +145,21 @@ export default function ExpenseFilters({ filters, onChange, onReset, categories 
             aria-live="polite"
             className="ml-auto self-center text-xs text-slate-500 dark:text-slate-400"
           >
-            {resultCount} result{resultCount === 1 ? '' : 's'}
+            {t('filters.resultCount', { count: resultCount })}
           </span>
         )}
       </div>
 
       {activeChips.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-200 pt-3 dark:border-slate-800">
-          <span className="text-xs text-slate-500 dark:text-slate-400">Filtered by</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{t('expenses.filteredBy')}</span>
           {activeChips.map((chip) => (
             <span key={chip.key} className="hw-chip">
               <span className="max-w-40 truncate">{chip.label}</span>
               <button
                 type="button"
                 onClick={() => set(chip.clear)}
-                aria-label={`Remove filter ${chip.label}`}
+                aria-label={t('filters.removeFilter', { label: chip.label })}
                 className="hw-chip-remove"
               >
                 <X className="h-3 w-3" />
@@ -164,7 +171,7 @@ export default function ExpenseFilters({ filters, onChange, onReset, categories 
             onClick={onReset}
             className="ml-1 text-xs font-semibold text-brand-700 underline-offset-2 hover:underline dark:text-brand-400"
           >
-            Clear all
+            {t('filters.clearAll')}
           </button>
         </div>
       )}
@@ -172,21 +179,21 @@ export default function ExpenseFilters({ filters, onChange, onReset, categories 
       {advancedOpen && (
         <div className="grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate-800">
           <Select
-            label="Category"
+            label={t('common.category')}
             options={categories}
-            placeholder="Any category"
+            placeholder={t('expenses.anyCategory')}
             value={filters.category}
             onChange={(event) => set({ category: event.target.value })}
           />
           <Select
-            label="Payment method"
+            label={t('expenses.paymentMethod')}
             options={PAYMENT_METHODS}
-            placeholder="Any method"
+            placeholder={t('expenses.anyMethod')}
             value={filters.paymentMethod}
             onChange={(event) => set({ paymentMethod: event.target.value })}
           />
           <Input
-            label="Min amount"
+            label={t('expenses.minAmount')}
             type="number"
             inputMode="decimal"
             placeholder="0"
@@ -194,7 +201,7 @@ export default function ExpenseFilters({ filters, onChange, onReset, categories 
             onChange={(event) => set({ minAmount: event.target.value })}
           />
           <Input
-            label="Max amount"
+            label={t('expenses.maxAmount')}
             type="number"
             inputMode="decimal"
             placeholder="Any"
@@ -204,13 +211,13 @@ export default function ExpenseFilters({ filters, onChange, onReset, categories 
 
           <div className="grid grid-cols-2 gap-3 sm:col-span-2">
             <Input
-              label="From"
+              label={t('common.from')}
               type="date"
               value={filters.from}
               onChange={(event) => set({ from: event.target.value, preset: 'custom' })}
             />
             <Input
-              label="To"
+              label={t('common.to')}
               type="date"
               value={filters.to}
               onChange={(event) => set({ to: event.target.value, preset: 'custom' })}
@@ -220,7 +227,7 @@ export default function ExpenseFilters({ filters, onChange, onReset, categories 
           {hasFilters && (
             <div className="flex items-end lg:col-span-2">
               <Button variant="ghost" icon={X} onClick={onReset}>
-                Clear all filters
+                {t('filters.clearAllFilters')}
               </Button>
             </div>
           )}

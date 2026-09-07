@@ -17,6 +17,7 @@ import useQuickAdd from '../../../shared/hooks/useQuickAdd';
 import { useAuth } from '../../auth';
 import expenseService from '../api/expensesApi';
 import { formatMoney } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const INITIAL_FILTERS = {
   search: '',
@@ -31,6 +32,7 @@ const INITIAL_FILTERS = {
 };
 
 export default function Expenses() {
+  const { t } = useT();
   const { currency } = useAuth();
   const { categories } = useCategories();
   // The shell owns the add-an-expense dialog. Using it here rather than a
@@ -67,7 +69,7 @@ export default function Expenses() {
 
   const submit = (values) =>
     run(() => (editing ? expenseService.update(editing._id, values) : expenseService.create(values)), {
-      success: editing ? 'Expense updated' : 'Expense added',
+      success: editing ? t('expenses.updated') : t('expenses.added'),
       onDone: () => {
         setFormOpen(false);
         setEditing(null);
@@ -77,7 +79,7 @@ export default function Expenses() {
 
   const confirmDelete = () =>
     run(() => expenseService.remove(deleting._id), {
-      success: 'Expense deleted',
+      success: t('expenses.deleted'),
       onDone: () => {
         setDeleting(null);
         reload();
@@ -106,19 +108,20 @@ export default function Expenses() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Expenses"
+        title={t('expenses.title')}
         subtitle={
           data
-            ? `${formatMoney(data.filteredTotal, currency)} across ${pagination.total} transaction${
-                pagination.total === 1 ? '' : 's'
-              }`
+            ? t('expenses.subtitle', {
+                amount: formatMoney(data.filteredTotal, currency),
+                count: pagination.total,
+              })
             : undefined
         }
       >
         {/* The tab bar's raised button already covers this on a phone. */}
         {canCreate && (
           <Button icon={Plus} shortcut="N" onClick={openQuickAdd} className="hidden sm:inline-flex">
-            Add expense
+            {t('expenses.add')}
           </Button>
         )}
       </PageHeader>
@@ -134,25 +137,25 @@ export default function Expenses() {
       {loading && !data ? (
         <SkeletonRows count={6} />
       ) : error ? (
-        <EmptyState icon={Receipt} title="Could not load expenses" message={error} actionLabel="Retry" onAction={reload} />
+        <EmptyState icon={Receipt} title={t('expenses.loadFailed')} message={error} actionLabel={t('common.retry')} onAction={reload} />
       ) : items.length === 0 ? (
         // When a filter is what emptied the list, the useful button is the one
         // that puts the expenses back, not one that adds another.
         filtered ? (
           <EmptyState
             icon={Receipt}
-            title="Nothing matches those filters"
-            message="Your expenses are still here. Widen the date range or clear the filters to see them."
-            actionLabel="Clear filters"
+            title={t('expenses.noMatch')}
+            message={t('expenses.noMatchMessage')}
+            actionLabel={t('expenses.clearFilters')}
             actionIcon={X}
             onAction={() => setFilters(INITIAL_FILTERS)}
           />
         ) : (
           <EmptyState
             icon={Receipt}
-            title="No expenses yet"
-            message="Add your first expense and this page fills up fast."
-            actionLabel="Add expense"
+            title={t('expenses.empty')}
+            message={t('expenses.emptyMessage')}
+            actionLabel={t('expenses.add')}
             actionIcon={Plus}
             onAction={openQuickAdd}
           />
@@ -207,7 +210,7 @@ export default function Expenses() {
           setFormOpen(false);
           setEditing(null);
         }}
-        title={editing ? 'Edit expense' : 'Add an expense'}
+        title={editing ? t('expenses.edit') : t('expenses.addTitle')}
         size="md"
       >
         <ExpenseForm
@@ -228,10 +231,13 @@ export default function Expenses() {
         onClose={() => setDeleting(null)}
         onConfirm={confirmDelete}
         loading={saving}
-        title="Delete this expense?"
+        title={t('expenses.deleteTitle')}
         message={
           deleting
-            ? `"${deleting.description || deleting.category}" for ${formatMoney(deleting.amount, currency)} will be removed. This cannot be undone.`
+            ? t('expenses.deleteMessage', {
+                what: deleting.description || deleting.category,
+                amount: formatMoney(deleting.amount, currency),
+              })
             : ''
         }
       />

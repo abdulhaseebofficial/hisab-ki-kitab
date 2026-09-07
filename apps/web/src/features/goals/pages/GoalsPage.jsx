@@ -16,14 +16,17 @@ import useMutation from '../../../shared/hooks/useMutation';
 import { useAuth } from '../../auth';
 import goalService from '../api/goalsApi';
 import { cn, formatMoney } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
+// Keys, so the tab a person is on survives a language change.
 const TABS = [
-  { key: 'all', label: 'All' },
-  { key: 'active', label: 'Active' },
-  { key: 'completed', label: 'Completed' },
+  { key: 'all', labelKey: 'goals.tabAll' },
+  { key: 'active', labelKey: 'goals.tabActive' },
+  { key: 'completed', labelKey: 'goals.tabCompleted' },
 ];
 
 export default function Goals() {
+  const { t } = useT();
   const { currency } = useAuth();
   const [tab, setTab] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
@@ -67,7 +70,7 @@ export default function Goals() {
 
   const confirmDelete = () =>
     run(() => goalService.remove(deleting._id), {
-      success: 'Goal deleted',
+      success: t('goals.deleted'),
       onDone: () => {
         setDeleting(null);
         reload();
@@ -80,8 +83,8 @@ export default function Goals() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Savings goals"
-        subtitle="Money with a name attached is much harder to spend by accident."
+        title={t('goals.title')}
+        subtitle={t('goals.subtitle')}
       >
         <Button
           icon={Plus}
@@ -90,15 +93,15 @@ export default function Goals() {
             setFormOpen(true);
           }}
         >
-          New goal
+          {t('goals.newGoal')}
         </Button>
       </PageHeader>
 
       {summary && summary.count > 0 && (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard label="Total saved" value={summary.totalSaved} currency={currency} icon={Target} tone="safe" />
+          <StatCard label={t('goals.totalSaved')} value={summary.totalSaved} currency={currency} icon={Target} tone="safe" />
           <StatCard
-            label="Total target"
+            label={t('goals.totalTarget')}
             value={summary.totalTargeted}
             currency={currency}
             icon={Target}
@@ -106,8 +109,8 @@ export default function Goals() {
             progress={summary.totalTargeted ? (summary.totalSaved / summary.totalTargeted) * 100 : 0}
           />
           <StatCard
-            label="Goals completed"
-            value={`${summary.completed} of ${summary.count}`}
+            label={t('goals.completedCount')}
+            value={t('goals.completedOf', { done: summary.completed, total: summary.count })}
             raw
             icon={Trophy}
             tone="caution"
@@ -129,7 +132,7 @@ export default function Goals() {
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
             )}
           >
-            {option.label}
+            {t(option.labelKey)}
           </button>
         ))}
       </div>
@@ -141,17 +144,17 @@ export default function Goals() {
           <SkeletonCard lines={4} />
         </div>
       ) : error ? (
-        <EmptyState icon={Target} title="Could not load goals" message={error} actionLabel="Retry" onAction={reload} />
+        <EmptyState icon={Target} title={t('goals.loadFailed')} message={error} actionLabel={t('common.retry')} onAction={reload} />
       ) : goals.length === 0 ? (
         <EmptyState
           icon={Target}
-          title={tab === 'completed' ? 'No completed goals yet' : 'No goals yet'}
+          title={tab === 'completed' ? t('goals.emptyCompleted') : t('goals.empty')}
           message={
             tab === 'completed'
-              ? 'Finish one and it will be celebrated right here.'
-              : 'Start with something small - even a 2000 emergency fund changes how the month feels.'
+              ? t('goals.emptyCompletedMessage')
+              : t('goals.emptyMessage')
           }
-          actionLabel="Create your first goal"
+          actionLabel={t('goals.createFirst')}
           actionIcon={Plus}
           onAction={() => {
             setEditing(null);
@@ -211,10 +214,13 @@ export default function Goals() {
         onClose={() => setDeleting(null)}
         onConfirm={confirmDelete}
         loading={saving}
-        title="Delete this goal?"
+        title={t('goals.deleteTitle')}
         message={
           deleting
-            ? `"${deleting.title}" and its ${formatMoney(deleting.savedAmount, currency)} of progress will be removed. The money itself is not affected.`
+            ? t('goals.deleteMessage', {
+                title: deleting.title,
+                amount: formatMoney(deleting.savedAmount, currency),
+              })
             : ''
         }
       />

@@ -9,6 +9,7 @@
 const incomeRepo = require('./income.repository');
 const ApiError = require('../../shared/errors/ApiError');
 const { modeOf } = require('../../shared/categories');
+const catalogue = require('@hisabkikitab/contracts/catalogue');
 const {
   round2,
   startOfMonth,
@@ -16,7 +17,14 @@ const {
   currentPeriod,
 } = require('../../shared/utils/calculations');
 
-const DEFAULT_SOURCE = 'Pocket Money';
+/**
+ * What an entry is filed under when the caller names no source.
+ *
+ * Per mode, because "Pocket Money" is not a thing a household receives. The
+ * catalogue's first income category for the mode is the ordinary case for that
+ * mode - pocket money for a student, a salary for a household.
+ */
+const defaultSource = (financeMode) => catalogue.categoryIdsFor('income', financeMode)[0];
 
 const list = (userId, financeMode, filters) => incomeRepo.list(userId, financeMode, filters);
 
@@ -48,7 +56,7 @@ const create = (userId, financeMode, { amount, source, note, date }) =>
   incomeRepo.create(userId, {
     financeMode,
     amount,
-    source: source || DEFAULT_SOURCE,
+    source: source || defaultSource(financeMode),
     note: note || '',
     date: date ? new Date(date) : new Date(),
   });

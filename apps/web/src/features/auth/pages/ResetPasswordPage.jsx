@@ -12,6 +12,7 @@ import { useAuth } from '../AuthContext';
 import { getErrorMessage } from '../../../shared/api/client';
 import PasswordChecklist from '../../../shared/components/ui/PasswordChecklist';
 import { passwordSchema, PASSWORD_MISMATCH } from '../../../shared/validation/rules';
+import useT from '../../../shared/i18n/I18nProvider';
 
 // The same rules as sign-up, from the same place, so a reset cannot set a
 // password the sign-up form would have refused.
@@ -26,6 +27,7 @@ const schema = z
   });
 
 export default function ResetPassword() {
+  const { t } = useT();
   const { token } = useParams();
   const navigate = useNavigate();
   const { refreshUser } = useAuth();
@@ -51,8 +53,8 @@ export default function ResetPassword() {
 
   return (
     <AuthShell
-      title="Set a new password"
-      subtitle="Pick something you have not used anywhere else."
+      title={t('auth.resetTitle')}
+      subtitle={t('auth.resetSubtitleShort')}
       footer={
         <Link to="/login" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
           Back to log in
@@ -61,10 +63,10 @@ export default function ResetPassword() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <PasswordInput
-          label="New password"
+          label={t('auth.newPassword')}
           autoComplete="new-password"
-          placeholder="At least 8 characters"
-          hint="Must contain a letter and a number"
+          placeholder={t('auth.atLeast8')}
+          hint={t('auth.letterAndNumber')}
           autoFocus
           error={errors.password && errors.password.message}
           {...register('password')}
@@ -72,15 +74,15 @@ export default function ResetPassword() {
         <PasswordChecklist value={watch('password') || ''} />
 
         <PasswordInput
-          label="Confirm new password"
+          label={t('auth.confirmNewPassword')}
           autoComplete="new-password"
-          placeholder="Type it again"
+          placeholder={t('auth.confirmPasswordPlaceholder')}
           error={errors.confirmPassword && errors.confirmPassword.message}
           {...register('confirmPassword')}
         />
 
         <Button type="submit" icon={KeyRound} loading={isSubmitting} size="lg" className="w-full">
-          Update password
+          {t('auth.updatePassword')}
         </Button>
       </form>
     </AuthShell>

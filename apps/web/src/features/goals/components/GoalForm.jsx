@@ -7,6 +7,7 @@ import Textarea from '../../../shared/components/ui/Textarea';
 import Button from '../../../shared/components/ui/Button';
 import { GOAL_ICONS } from '../../../shared/utils/constants';
 import { currencySymbol, toInputDate, cn } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const schema = z.object({
   title: z.string().min(1, 'Give your goal a name').max(80, 'Keep the name shorter'),
@@ -17,6 +18,7 @@ const schema = z.object({
 });
 
 export default function GoalForm({ goal, currency = 'INR', onSubmit, onCancel, submitting }) {
+  const { t } = useT();
   const {
     register,
     handleSubmit,
@@ -49,8 +51,8 @@ export default function GoalForm({ goal, currency = 'INR', onSubmit, onCancel, s
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <Input
-        label="What are you saving for?"
-        placeholder="e.g. New laptop for final year project"
+        label={t('goals.savingFor')}
+        placeholder={t('goals.savingForPlaceholder')}
         autoFocus
         error={errors.title && errors.title.message}
         {...register('title')}
@@ -58,7 +60,7 @@ export default function GoalForm({ goal, currency = 'INR', onSubmit, onCancel, s
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Input
-          label="Target amount"
+          label={t('goals.targetAmount')}
           type="number"
           step="1"
           inputMode="decimal"
@@ -69,17 +71,17 @@ export default function GoalForm({ goal, currency = 'INR', onSubmit, onCancel, s
         />
 
         <Input
-          label="Deadline (optional)"
+          label={t('goals.deadlineOptional')}
           type="date"
           min={toInputDate(new Date())}
-          hint="We will work out how much to save per day"
+          hint={t('goals.deadlineHint')}
           error={errors.deadline && errors.deadline.message}
           {...register('deadline')}
         />
       </div>
 
       <div>
-        <span className="hw-label">Pick an icon</span>
+        <span className="hw-label">{t('goals.pickIcon')}</span>
         <Controller
           name="icon"
           control={control}
@@ -90,7 +92,7 @@ export default function GoalForm({ goal, currency = 'INR', onSubmit, onCancel, s
                   key={icon}
                   type="button"
                   onClick={() => field.onChange(icon)}
-                  aria-label={`Use icon ${icon}`}
+                  aria-label={t('goals.useIcon', { icon })}
                   aria-pressed={field.value === icon}
                   className={cn(
                     'flex h-10 w-10 items-center justify-center rounded-xl text-xl transition',
@@ -108,8 +110,8 @@ export default function GoalForm({ goal, currency = 'INR', onSubmit, onCancel, s
       </div>
 
       <Textarea
-        label="Note (optional)"
-        placeholder="Anything worth remembering about this goal"
+        label={t('goals.noteOptional')}
+        placeholder={t('goals.notePlaceholder')}
         error={errors.note && errors.note.message}
         {...register('note')}
       />
@@ -117,11 +119,11 @@ export default function GoalForm({ goal, currency = 'INR', onSubmit, onCancel, s
       <div className="flex justify-end gap-2 pt-1">
         {onCancel && (
           <Button variant="ghost" onClick={onCancel} disabled={submitting}>
-            Cancel
+            {t('common.cancel')}
           </Button>
         )}
         <Button type="submit" loading={submitting}>
-          {goal ? 'Save changes' : 'Create goal'}
+          {goal ? t('goals.saveChanges') : t('goals.createGoal')}
         </Button>
       </div>
     </form>

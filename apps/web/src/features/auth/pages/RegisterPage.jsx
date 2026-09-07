@@ -21,6 +21,7 @@ import {
   PASSWORD_MISMATCH,
   TERMS_MESSAGE,
 } from '../../../shared/validation/rules';
+import useT from '../../../shared/i18n/I18nProvider';
 
 /**
  * The same rules the API enforces, imported rather than restated.
@@ -57,6 +58,7 @@ const schema = z
   });
 
 export default function Register() {
+  const { t } = useT();
   const { register: signUp, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
@@ -104,13 +106,13 @@ export default function Register() {
 
   return (
     <AuthShell
-      title="Create your account"
-      subtitle="Two minutes now, a whole month of clarity after."
+      title={t('auth.registerTitle')}
+      subtitle={t('auth.registerSubtitle')}
       footer={
         <>
-          Already have an account?{' '}
+          {t('auth.alreadyHaveAccount')}{' '}
           <Link to="/login" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
-            Log in
+            {t('auth.login')}
           </Link>
         </>
       }
@@ -132,7 +134,7 @@ export default function Register() {
           />
           {!acceptedTerms && (
             <p className="-mt-1 mb-4 text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-              Accept the terms below to continue with Google.
+              {t('auth.acceptTermsForGoogle')}
             </p>
           )}
         </>
@@ -140,19 +142,19 @@ export default function Register() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <Input
-          label="Full name"
+          label={t('auth.fullName')}
           autoComplete="name"
-          placeholder="Your full name"
+          placeholder={t('auth.fullNamePlaceholder')}
           error={errors.name && errors.name.message}
           {...register('name')}
         />
 
         <Input
-          label="Email"
+          label={t('auth.email')}
           type="email"
           autoComplete="email"
           inputMode="email"
-          placeholder="you@university.edu"
+          placeholder={t('auth.emailPlaceholder')}
           error={errors.email && errors.email.message}
           {...register('email')}
         />
@@ -160,7 +162,7 @@ export default function Register() {
         <div className="space-y-2">
           <PasswordInput
             autoComplete="new-password"
-            placeholder="Pick something only you would type"
+            placeholder={t('auth.newPasswordPlaceholder')}
             error={errors.password && errors.password.message}
             {...register('password')}
           />
@@ -168,9 +170,9 @@ export default function Register() {
         </div>
 
         <PasswordInput
-          label="Confirm password"
+          label={t('auth.confirmPassword')}
           autoComplete="new-password"
-          placeholder="Type it again"
+          placeholder={t('auth.confirmPasswordPlaceholder')}
           error={errors.confirmPassword && errors.confirmPassword.message}
           {...register('confirmPassword')}
         />
@@ -188,10 +190,10 @@ export default function Register() {
                 pages exist, this is the one place to link them from. */}
             <span className="text-sm text-slate-700 dark:text-slate-300">
               <span className="block font-medium text-slate-800 dark:text-slate-200">
-                I agree to the terms of use and privacy policy
+                {t('auth.agreeTerms')}
               </span>
               <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-                Your data stays in your account. We never ask for a bank login, and we do not sell anything.
+                {t('auth.agreeTermsDetail')}
               </span>
             </span>
           </label>
@@ -210,11 +212,11 @@ export default function Register() {
           size="lg"
           className="w-full"
         >
-          Create account
+          {t('auth.createAccount')}
         </Button>
 
         <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-          We only ask for what the app needs. No bank login, ever.
+          {t('auth.noBankLogin')}
         </p>
       </form>
     </AuthShell>

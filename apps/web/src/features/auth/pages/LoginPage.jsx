@@ -13,6 +13,7 @@ import GoogleSignInButton from '../components/GoogleSignInButton';
 import useAsync from '../../../shared/hooks/useAsync';
 import authService from '../api/authApi';
 import { getErrorMessage } from '../../../shared/api/client';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email'),
@@ -21,6 +22,7 @@ const schema = z.object({
 
 export default function Login() {
   const { login, loginWithGoogle } = useAuth();
+  const { t } = useT();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -66,13 +68,13 @@ export default function Login() {
 
   return (
     <AuthShell
-      title="Welcome back"
-      subtitle="Log in to see where your money went this month."
+      title={t('auth.loginTitle')}
+      subtitle={t('auth.loginSubtitle')}
       footer={
         <>
-          New here?{' '}
+          {t('auth.newHere')}{' '}
           <Link to="/register" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
-            Create an account
+            {t('auth.register')}
           </Link>
         </>
       }
@@ -85,10 +87,10 @@ export default function Login() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <Input
-          label="Email"
+          label={t('auth.email')}
           type="email"
           autoComplete="email"
-          placeholder="you@university.edu"
+          placeholder={t('auth.emailPlaceholder')}
           error={errors.email && errors.email.message}
           {...register('email')}
         />
@@ -96,7 +98,7 @@ export default function Login() {
         <div>
           <PasswordInput
             autoComplete="current-password"
-            placeholder="Your password"
+            placeholder={t('auth.passwordPlaceholder')}
             error={errors.password && errors.password.message}
             {...register('password')}
           />
@@ -106,13 +108,13 @@ export default function Login() {
               to="/forgot-password"
               className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
             >
-              Forgot your password?
+              {t('auth.forgotPassword')}
             </Link>
           </div>
         </div>
 
         <Button type="submit" icon={LogIn} loading={isSubmitting} size="lg" className="w-full">
-          Log in
+          {t('auth.login')}
         </Button>
 
         <button
@@ -120,7 +122,7 @@ export default function Login() {
           onClick={fillDemo}
           className="w-full rounded-xl border border-dashed border-slate-300 py-2.5 text-xs font-medium text-slate-500 transition hover:border-brand-400 hover:text-brand-600 dark:border-slate-700 dark:text-slate-400"
         >
-          Try the demo account
+          {t('auth.tryDemo')}
         </button>
       </form>
     </AuthShell>

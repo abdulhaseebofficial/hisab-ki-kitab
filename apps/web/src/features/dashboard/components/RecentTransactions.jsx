@@ -5,8 +5,11 @@ import EmptyState from '../../../shared/components/ui/EmptyState';
 import { useTheme } from '../../../app/providers/ThemeProvider';
 import { categoryColor, categoryEmoji } from '../../../shared/utils/constants';
 import { formatDate, formatMoney } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
+import useCategoryLabel from '../../../shared/i18n/useCategoryLabel';
 
 export default function RecentTransactions({ expenses = [], currency = 'INR', onAdd }) {
+  const label = useCategoryLabel();
   const { isDark } = useTheme();
 
   return (
@@ -49,10 +52,10 @@ export default function RecentTransactions({ expenses = [], currency = 'INR', on
 
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-2 text-sm font-medium leading-snug text-slate-900 dark:text-slate-100">
-                  {expense.description || expense.category}
+                  {expense.description || label(expense.category)}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {expense.category} &middot; {formatDate(expense.date)}
+                  {label(expense.category)} &middot; {formatDate(expense.date)}
                 </p>
               </div>
 

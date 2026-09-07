@@ -10,12 +10,14 @@ import Input from '../../../shared/components/ui/Input';
 import Button from '../../../shared/components/ui/Button';
 import authService from '../api/authApi';
 import { getErrorMessage } from '../../../shared/api/client';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const schema = z.object({
   email: z.string().min(1, 'Email is required').email('Enter a valid email'),
 });
 
 export default function ForgotPassword() {
+  const { t } = useT();
   const [sent, setSent] = useState(false);
   const [devLink, setDevLink] = useState(null);
 
@@ -40,11 +42,11 @@ export default function ForgotPassword() {
   if (sent) {
     return (
       <AuthShell
-        title="Check your inbox"
-        subtitle="If that email is registered, a reset link is on its way. It expires in 30 minutes."
+        title={t('auth.checkInbox')}
+        subtitle={t('auth.resetSentDetail')}
         footer={
           <Link to="/login" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
-            Back to log in
+            {t('auth.backToLogin')}
           </Link>
         }
       >
@@ -53,14 +55,14 @@ export default function ForgotPassword() {
             <MailCheck className="h-7 w-7 text-safe" />
           </span>
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Did not get it? Check spam, then try again in a minute.
+            {t('auth.didNotGetIt')}
           </p>
 
           {devLink && (
             <div className="w-full rounded-xl bg-caution/10 p-3 text-left dark:bg-caution/15">
-              <p className="text-xs font-semibold text-caution">Development mode</p>
+              <p className="text-xs font-semibold text-caution">{t('auth.developmentMode')}</p>
               <p className="mt-1 break-all text-xs text-slate-600 dark:text-slate-400">
-                SMTP is not configured, so here is the link:
+                {t('auth.smtpNotConfigured')}
               </p>
               <a href={devLink} className="mt-1 block break-all text-xs font-medium text-brand-600 hover:underline">
                 {devLink}
@@ -74,30 +76,30 @@ export default function ForgotPassword() {
 
   return (
     <AuthShell
-      title="Forgot your password?"
-      subtitle="Enter your email and we will send you a link to set a new one."
+      title={t('auth.forgotTitle')}
+      subtitle={t('auth.forgotSubtitleShort')}
       footer={
         <>
-          Remembered it?{' '}
+          {t('auth.rememberedIt')}{' '}
           <Link to="/login" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
-            Back to log in
+            {t('auth.backToLogin')}
           </Link>
         </>
       }
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <Input
-          label="Email"
+          label={t('auth.email')}
           type="email"
           autoComplete="email"
-          placeholder="you@university.edu"
+          placeholder={t('auth.emailPlaceholder')}
           autoFocus
           error={errors.email && errors.email.message}
           {...register('email')}
         />
 
         <Button type="submit" icon={Send} loading={isSubmitting} size="lg" className="w-full">
-          Send reset link
+          {t('auth.sendResetLinkShort')}
         </Button>
       </form>
     </AuthShell>

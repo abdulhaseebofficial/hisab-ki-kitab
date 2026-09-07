@@ -18,10 +18,12 @@ import { useAuth } from '../../auth';
 import budgetService from '../api/budgetsApi';
 import { advisorApi as aiService } from '../../advisor';
 import { currencySymbol, formatMoney, monthLabel } from '../../../shared/utils/format';
+import useT from '../../../shared/i18n/I18nProvider';
 
 const now = new Date();
 
 export default function Budget() {
+  const { t } = useT();
   const { currency } = useAuth();
   const { categories } = useCategories();
 
@@ -41,10 +43,10 @@ export default function Budget() {
 
   const saveLimit = () => {
     const limit = Number(limitValue);
-    if (Number.isNaN(limit) || limit < 0) return toast.error('Enter a limit of 0 or more');
+    if (Number.isNaN(limit) || limit < 0) return toast.error(t('budget.enterLimit'));
 
     const category = editing ? editing.category : newCategory;
-    if (!category) return toast.error('Pick a category');
+    if (!category) return toast.error(t('budget.pickCategory'));
 
     return run(() => budgetService.set({ category, limit, month: period.month, year: period.year }), {
       success: `Budget set for ${category}`,
@@ -70,7 +72,7 @@ export default function Budget() {
           period.year
         ),
       {
-        success: 'Budget plan applied',
+        success: t('budget.planApplied'),
         onDone: () => {
           setSuggestion(null);
           reload();
@@ -85,23 +87,20 @@ export default function Budget() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Budget"
-        subtitle={`Limits for ${monthLabel(
-          period.month,
-          period.year
-        )}. Green is fine, amber is a warning, red means stop.`}
+        title={t('budget.title')}
+        subtitle={t('budget.subtitle', { month: monthLabel(period.month, period.year) })}
       >
         <Button icon={Sparkles} variant="secondary" loading={suggesting} onClick={askAi}>
-          Suggest a budget
+          {t('budget.suggest')}
         </Button>
       </PageHeader>
 
       {totals && (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Income" value={totals.income} currency={currency} icon={Wallet} tone="safe" />
-          <StatCard label="Total budgeted" value={totals.limit} currency={currency} icon={PieIcon} tone="brand" />
+          <StatCard label={t('budget.income')} value={totals.income} currency={currency} icon={Wallet} tone="safe" />
+          <StatCard label={t('budget.totalBudgeted')} value={totals.limit} currency={currency} icon={PieIcon} tone="brand" />
           <StatCard
-            label="Spent so far"
+            label={t('budget.spentSoFar')}
             value={totals.spent}
             currency={currency}
             icon={PieIcon}
@@ -110,33 +109,33 @@ export default function Budget() {
             progressTone={totals.spent > totals.limit ? 'over' : 'warning'}
           />
           <StatCard
-            label="Not yet allocated"
+            label={t('budget.notAllocated')}
             value={totals.unallocated}
             currency={currency}
             icon={Wallet}
             tone={totals.unallocated < 0 ? 'danger' : 'neutral'}
             footnote={
               totals.unallocated < 0
-                ? 'Your limits add up to more than your income'
-                : 'Room left to budget or save'
+                ? t('budget.overIncome')
+                : t('budget.roomLeft')
             }
           />
         </section>
       )}
 
       <Card>
-        <CardHeader title="Category limits" icon={PieIcon} />
+        <CardHeader title={t('budget.categoryLimits')} icon={PieIcon} />
 
         {loading && !data ? (
           <SkeletonCard lines={6} className="border-0 p-0 shadow-none" />
         ) : error ? (
-          <EmptyState icon={PieIcon} title="Could not load budgets" message={error} actionLabel="Retry" onAction={reload} />
+          <EmptyState icon={PieIcon} title={t('budget.loadFailed')} message={error} actionLabel={t('common.retry')} onAction={reload} />
         ) : items.length === 0 ? (
           <EmptyState
             icon={PieIcon}
-            title="No limits set yet"
-            message="Set a limit per category, or let the AI draft a plan from what you already spend."
-            actionLabel="Suggest a budget for me"
+            title={t('budget.empty')}
+            message={t('budget.emptyMessage')}
+            actionLabel={t('budget.suggestForMe')}
             actionIcon={Sparkles}
             onAction={askAi}
           />
@@ -159,19 +158,19 @@ export default function Budget() {
 
       {unbudgeted.length > 0 && (
         <Card>
-          <CardHeader title="Add a limit" subtitle="Categories without a budget this month" />
+          <CardHeader title={t('budget.addLimit')} subtitle={t('budget.addLimitSubtitle')} />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <Select
               className="flex-1"
-              label="Category"
+              label={t('common.category')}
               options={unbudgeted}
-              placeholder="Pick a category"
+              placeholder={t('budget.pickCategory')}
               value={newCategory}
               onChange={(event) => setNewCategory(event.target.value)}
             />
             <Input
               className="flex-1"
-              label="Monthly limit"
+              label={t('budget.monthlyLimit')}
               type="number"
               inputMode="decimal"
               placeholder="0"
@@ -180,7 +179,7 @@ export default function Budget() {
               onChange={(event) => setLimitValue(event.target.value)}
             />
             <Button onClick={saveLimit} loading={saving} disabled={!newCategory} className="sm:mb-0.5">
-              Set limit
+              {t('budget.setLimit')}
             </Button>
           </div>
         </Card>
@@ -190,29 +189,29 @@ export default function Budget() {
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
-        title={editing ? `Budget for ${editing.category}` : ''}
-        subtitle={editing ? `Currently spent ${formatMoney(editing.spent, currency)} this month` : ''}
+        title={editing ? t('budget.budgetFor', { category: editing.category }) : ''}
+        subtitle={editing ? t('budget.currentlySpent', { amount: formatMoney(editing.spent, currency) }) : ''}
         size="sm"
         footer={
           <>
             <Button variant="ghost" onClick={() => setEditing(null)} disabled={saving}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button onClick={saveLimit} loading={saving}>
-              Save limit
+              {t('budget.saveLimit')}
             </Button>
           </>
         }
       >
         <Input
-          label="Monthly limit"
+          label={t('budget.monthlyLimit')}
           type="number"
           inputMode="decimal"
           autoFocus
           prefix={currencySymbol(currency)}
           value={limitValue}
           onChange={(event) => setLimitValue(event.target.value)}
-          hint="Set it to 0 to stop tracking this category"
+          hint={t('budget.zeroToStop')}
         />
       </Modal>
 
@@ -220,16 +219,16 @@ export default function Budget() {
       <Modal
         open={Boolean(suggestion)}
         onClose={() => setSuggestion(null)}
-        title="Your suggested budget"
-        subtitle={suggestion && !suggestion.aiPowered ? 'Built by the offline advisor' : 'Drafted from your real spending'}
+        title={t('budget.suggestedTitle')}
+        subtitle={suggestion && !suggestion.aiPowered ? t('budget.builtOffline') : t('budget.draftedFromSpending')}
         size="md"
         footer={
           <>
             <Button variant="ghost" onClick={() => setSuggestion(null)} disabled={saving}>
-              Not now
+              {t('budget.notNow')}
             </Button>
             <Button icon={Check} onClick={applySuggestion} loading={saving}>
-              Apply this plan
+              {t('budget.applyPlan')}
             </Button>
           </>
         }
@@ -255,7 +254,7 @@ export default function Budget() {
             </ul>
 
             <div className="flex items-center justify-between rounded-xl bg-safe/10 px-3.5 py-3 dark:bg-safe/15">
-              <span className="text-sm font-semibold text-safe">Left over to save each month</span>
+              <span className="text-sm font-semibold text-safe">{t('budget.leftToSave')}</span>
               <span className="text-sm font-bold tabular-nums text-safe">
                 {formatMoney(suggestion.savingsTarget, currency)}
               </span>
@@ -263,7 +262,7 @@ export default function Budget() {
 
             {suggestion.exceedsIncome && (
               <p className="text-xs font-medium text-danger">
-                Heads up: these limits add up to more than your income. Trim a category before applying.
+                {t('budget.exceedsIncome')}
               </p>
             )}
           </div>
