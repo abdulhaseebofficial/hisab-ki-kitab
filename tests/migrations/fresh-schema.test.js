@@ -28,7 +28,10 @@ const { migrationFiles } = require(path.join(API, 'src/infrastructure/database/m
 const { migrationUrl } = require(path.join(API, 'src/infrastructure/database/databaseUrl'));
 
 const MIGRATIONS = path.join(__dirname, '..', '..', 'database', 'migrations');
-const SCHEMA = 'migration_smoke_test';
+// Unique per run. With a fixed name, two runs at once each begin by dropping
+// the other's schema, and both then fail reporting tables that were there a
+// moment ago - a confusing way to discover you started the suite twice.
+const SCHEMA = 'migration_smoke_test_' + process.pid + '_' + Date.now().toString(36);
 
 (async () => {
   // A dedicated connection, on the direct URL where one is configured, so no
