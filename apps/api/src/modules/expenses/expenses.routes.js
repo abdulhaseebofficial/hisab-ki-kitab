@@ -14,4 +14,7 @@ router.get('/:id', expenseValidators.byId, validate, ctrl.getExpense);
 router.put('/:id', expenseValidators.update, validate, ctrl.updateExpense);
 router.delete('/:id', expenseValidators.byId, validate, ctrl.deleteExpense);
 
+// Ticking a bill off records it and moves its due date on, in one step.
+router.post('/:id/mark-paid', expenseValidators.markPaid, validate, ctrl.markBillPaid);
+
 module.exports = router;
