@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Lightbulb, RefreshCw, Sparkles } from 'lucide-react';
 import aiService from '../api/advisorApi';
 import Skeleton from '../../../shared/components/ui/Skeleton';
+import useT from '../../../shared/i18n/I18nProvider';
+import { useAuth } from '../../auth';
 
 /**
  * "Tip of the day" card for the dashboard.
@@ -9,6 +11,9 @@ import Skeleton from '../../../shared/components/ui/Skeleton';
  * not burn an API call - only the explicit refresh button does.
  */
 export default function TipCard() {
+  const { t } = useT();
+  const { user } = useAuth();
+  const householder = Boolean(user && user.financeMode === 'householder');
   const [tip, setTip] = useState(null);
   const [aiPowered, setAiPowered] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -20,12 +25,13 @@ export default function TipCard() {
       setTip(data.tip);
       setAiPowered(data.aiPowered);
     } catch {
-      setTip('Log every expense for three days straight. You cannot cut what you cannot see.');
+      // Even the could-not-load case is worded for who is reading it.
+      setTip(t(householder ? 'advisor.tipUnavailableHouseholder' : 'advisor.tipUnavailableStudent'));
       setAiPowered(false);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t, householder]);
 
   useEffect(() => {
     load();
@@ -40,7 +46,7 @@ export default function TipCard() {
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">Tip of the day</h2>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">{t('advisor.tipOfTheDay')}</h2>
             {aiPowered && (
               <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
                 <Sparkles className="h-2.5 w-2.5" />
@@ -63,7 +69,7 @@ export default function TipCard() {
           type="button"
           onClick={() => load(true)}
           disabled={loading}
-          aria-label="Get another tip"
+          aria-label={t('advisor.anotherTip')}
           className="shrink-0 rounded-lg p-2 text-slate-400 transition hover:bg-canvas-card/70 hover:text-brand-600 disabled:opacity-50 dark:hover:bg-slate-800"
         >
           <RefreshCw className={loading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />

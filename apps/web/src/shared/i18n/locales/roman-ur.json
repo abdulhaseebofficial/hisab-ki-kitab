@@ -186,7 +186,12 @@
     "sortRecords": "Record tarteeb dein",
     "loadFailed": "Aapka udhaar load nahi ho saka",
     "dueDateHint": "Marzi se - tareekh guzarne par hum khabardar kar denge",
-    "everyPaymentListed": "Har adaigi apni tareekh ke saath yahan darj hogi."
+    "everyPaymentListed": "Har adaigi apni tareekh ke saath yahan darj hogi.",
+    "nothingEither": "Na kuch liya, na kuch diya.",
+    "addARecord": "Record add karein",
+    "whenThatChanges": "jab yeh badle to likh dein.",
+    "borrowedAndLent": "Liye aur diye hue paise",
+    "openPage": "Udhaar kholein"
   },
   "validation": {
     "required": "Yeh zaroori hai",
@@ -241,7 +246,30 @@
     "finish": "Setup Mukammal Karein",
     "skip": "Abhi chhorein",
     "incomeQuestionStudent": "Har mahine aapke paas kitna hota hai? Jeb kharch, allowance, part-time kaam - kul jitna aane ki umeed hai.",
-    "incomeQuestionHouseholder": "Har mahine ghar ke paas kitna hota hai? Tankhwah, karobar, kiraya, bahar se bheji gayi raqam - kul jitna aane ki umeed hai."
+    "incomeQuestionHouseholder": "Har mahine ghar ke paas kitna hota hai? Tankhwah, karobar, kiraya, bahar se bheji gayi raqam - kul jitna aane ki umeed hai.",
+    "stepSetup": "Aap hisab kaise rakhte hain",
+    "stepMoney": "Aapke mahane ke paise",
+    "stepPlace": "Aap kahan parhte hain",
+    "stepGoal": "Aapka pehla maqsad",
+    "back": "Wapas",
+    "currencyFirst": "Pehle currency chunein, phir raqam likhein.",
+    "enterIncomeStudent": "Aagay barhne ke liye mahana jeb kharch likhein",
+    "enterIncomeHouseholder": "Aagay barhne ke liye ghar ki mahana aamdani likhein",
+    "goalIntroStudent": "Hadaf ke saath bachat behtar hoti hai. In mein se koi chunein ya apna likhein.",
+    "goalIntroHouseholder": "Ghar ki bachat hadaf ke saath behtar hoti hai. In mein se koi chunein ya apna likhein.",
+    "placeIntro": "Marzi se, lekin is se AI ka mashwara robot se zyada hostel ke senior jaisa lagta hai.",
+    "university": "University ya college",
+    "universityPlaceholder": "jaise University of the Punjab",
+    "hostelPlaceholder": "jaise Hostel Block C",
+    "goalEmergency": "Emergency fund",
+    "goalPhone": "Naya phone",
+    "goalTrip": "Doston ke saath trip",
+    "goalLaptop": "Projects ke liye laptop",
+    "goalHouseholdEmergency": "Ghar ka emergency fund",
+    "goalRentBuffer": "Kiraya aur bill ka zakheera",
+    "goalGrocery": "Mahane ka rashan fund",
+    "goalSchoolFees": "School fees ka fund",
+    "goalMedical": "Ghar ka medical fund"
   },
   "auth": {
     "login": "Log in karein",
@@ -545,7 +573,11 @@
     "suggestFoodStudent": "Kya mera khane ka kharcha hostel ke student ke liye theek hai?",
     "suggestBillsHouseholder": "Kya mere bijli gas ke bill zyada aa rahe hain?",
     "suggestTargetStudent": "Agle mahine se pehle 5000 bachane mein meri madad karein",
-    "suggestTargetHouseholder": "Bills ko chhuye baghair agle mahine 5000 kam karne mein madad karein"
+    "suggestTargetHouseholder": "Bills ko chhuye baghair agle mahine 5000 kam karne mein madad karein",
+    "tipOfTheDay": "Aaj ka mashwara",
+    "anotherTip": "Doosra mashwara dein",
+    "tipUnavailableStudent": "Teen din lagatar har kharcha darj karein. Jo nazar na aaye usay kam nahi kiya ja sakta.",
+    "tipUnavailableHouseholder": "Teen din lagatar ghar ka har kharcha likhein - bill aur bazaar dono. Jo nazar na aaye usay kam nahi kiya ja sakta."
   },
   "dashboard": {
     "greeting": "Assalam-o-alaikum {name}",
@@ -590,8 +622,8 @@
     "whereItGoesHouseholder": "Ghar ka kharcha kis par",
     "groupsEmpty": "Is mahine in mein abhi kuch darj nahi hua.",
     "upcomingBills": "Aane wale aur baqi bills",
-    "billsDueSoon": "Agle do hafton mein {count} baqi · {amount}",
-    "noBillsDue": "Agle do hafton mein kuch baqi nahi",
+    "billsDueSoon": "Aane wale hafton mein {count} baqi · {amount}",
+    "noBillsDue": "Aane wale hafton mein kuch baqi nahi",
     "noBillsMessage": "Kisi kharche ko baar baar wala banayein, us ki agli tareekh yahan nazar aayegi.",
     "dueOn": "{date} ko baqi",
     "overdueBill": "Tareekh guzar chuki",
@@ -601,7 +633,11 @@
     "savingsGoals": "Bachat ke maqasid",
     "noGoalsYet": "Abhi koi maqsad nahi",
     "noGoalsMessage": "Maqsad bachi hui raqam ko kisi aisi cheez mein badal deta hai jo aap sach mein chahte hain.",
-    "createGoal": "Maqsad banayein"
+    "createGoal": "Maqsad banayein",
+    "markPaid": "{what} ko ada shuda nishan zad karein",
+    "billPaid": "Ada shuda nishan zad ho gaya",
+    "billPaidFailed": "Yeh bill ada shuda nishan zad nahi ho saka",
+    "nextDue": "Agli tareekh {date}"
   },
   "notifications": {
     "title": "Ittila-aat",
@@ -677,7 +713,7 @@
     "previous": "Pichla",
     "next": "Agla",
     "admin": "Malik / Admin",
-    "loading": "Record aa rahe hain?",
+    "loading": "Record aa rahe hain...",
     "emptySpaces": "Shuru karne ke liye jagah banaein ya code darj karein.",
     "empty": "Is mahine ka koi record nahi.",
     "startMonth": "Mahina Shuru Karein",
@@ -751,7 +787,7 @@
     "custom": "Apni Raqam / Dasti Tabdeeli",
     "percentage": "Feesad Ke Hissay",
     "weighted": "Wazan Ke Mutabiq Hissa",
-    "cashExplanation": "Budget kharchay ki had hai. Naqad jama raqam se khana aur ada shuda bills nikal kar hai. Baqaya logon se leni hai; ghair ada bills kharcha hain magar abhi naqad kam nahi karte.",
+    "cashExplanation": "Budget kharchay ki had hai. Naqad jama raqam se khana aur mushtarka raqam se ada bills nikal kar hai. Apni jeb se bill dene walay ko hisab mein credit milta hai. Ghair ada bills kharcha hain magar naqad kam nahi karte.",
     "cash_method": "Naqad",
     "bank": "Bank Transfer",
     "mobile": "Mobile Wallet",
@@ -799,7 +835,25 @@
       "bills_deleted": "Bill hatayi",
       "payments_added": "Jama raqam darj ki",
       "payments_updated": "Jama raqam durust ki",
-      "payments_deleted": "Jama raqam hatayi"
-    }
+      "payments_deleted": "Jama raqam hatayi",
+      "receipt_updated": "Raseed mehfooz ki"
+    },
+    "food_budget": "Khanay Ka Mahana Budget",
+    "foodBudget": "Khanay Ka Mahana Budget",
+    "preview": "Hissay Dekhein",
+    "viewReceipt": "Raseed Dekhein",
+    "receipt": "Raseed Ki Tasveer (marzi se)",
+    "receiptHint": "PNG, zyada se zyada 512 KB aur 2048 by 2048 pixels.",
+    "receiptError": "Had ke andar durust PNG raseed chunein.",
+    "monthStatus": "Mahine Ki Halat",
+    "paymentStatus": "Adaigi Ki Halat",
+    "memberStatus": "Rehne Walay Ki Halat",
+    "open": "Khula",
+    "emptyValue": "Darj Nahi",
+    "finishSetup": "Mushtarka Rehaish Shuru Karein",
+    "paidDirect": "Apni Jeb Se Ada Bills",
+    "requestConflict": "Yeh darkhwast pehle istemal ho chuki hai. Naya record darj karne ke liye form dobara kholein.",
+    "setupComplete": "Sab tayyar hai. Hisab Ki Kitab mein khush aamdeed!",
+    "setupStep": "Qadam {step}, kul {count}"
   }
 }

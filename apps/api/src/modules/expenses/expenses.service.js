@@ -14,6 +14,7 @@ const expensesRepo = require('./expenses.repository');
 const { isOwnCategory, isOtherModeCategory, modeOf } = require('../../shared/categories');
 const ApiError = require('../../shared/errors/ApiError');
 const {
+  advance,
   firstRunAfter,
   materializeForUser,
 } = require('../../infrastructure/scheduling/recurringExpenses.job');
@@ -158,7 +159,49 @@ const countCreatedSince = (userId, since) => expensesRepo.countCreatedSince(user
 const findBillsDueBy = (userId, financeMode, when) =>
   expensesRepo.findBillsDueBy(userId, financeMode, when);
 
+/**
+ * Marks a recurring bill as paid for this cycle.
+ *
+ * Two things happen together, and both are needed: the expense is recorded, and
+ * the template's next due date moves on by one cycle. Recording without
+ * advancing would leave the bill sitting in "upcoming" after it was paid, and
+ * the sweep would create it a second time when the date arrived.
+ *
+ * Marking it paid EARLY is the ordinary case - the bill is due on the 12th and
+ * somebody pays it on the 8th - so the new due date is calculated from the date
+ * that was scheduled, not from today. Otherwise a household that pays a few
+ * days early every month would watch its billing date drift through the
+ * calendar.
+ */
+const markBillPaid = async (id, user, { amount, paidOn } = {}) => {
+  const template = await expensesRepo.findById(id, modeOf(user), user._id);
+  if (!template) throw ApiError.notFound('Expense not found');
+  if (!template.isRecurring) throw ApiError.badRequest('That expense is not a recurring bill');
+
+  const scheduled = template.nextRunAt ? new Date(template.nextRunAt) : new Date();
+  const when = paidOn ? new Date(paidOn) : new Date();
+
+  const created = await expensesRepo.create(user._id, {
+    financeMode: modeOf(user),
+    // The real amount may differ from the template - a bill is rarely the same
+    // twice - so the caller may say what was actually paid.
+    amount: amount === undefined || amount === null ? template.amount : amount,
+    category: template.category,
+    description: template.description,
+    paymentMethod: template.paymentMethod,
+    date: when,
+    isRecurring: false,
+    generatedFrom: template._id,
+  });
+
+  const next = advance(scheduled, template.recurringFrequency);
+  await expensesRepo.setNextRunAt(template._id, next);
+
+  return { expense: created, nextDueAt: next };
+};
+
 module.exports = {
+  markBillPaid,
   listRecent,
   listForRange,
   listAllForUser,

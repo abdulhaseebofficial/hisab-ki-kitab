@@ -39,4 +39,11 @@ const deleteExpense = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Expense deleted', data: { id } });
 });
 
-module.exports = { listExpenses, getExpense, createExpense, updateExpense, deleteExpense };
+/** POST /api/expenses/:id/mark-paid - this bill is settled for this cycle. */
+const markBillPaid = asyncHandler(async (req, res) => {
+  const result = await expenses.markBillPaid(req.params.id, req.user, req.body);
+  res.status(201).json({ success: true, message: 'Bill marked as paid', data: result });
+});
+
+module.exports = {
+  markBillPaid, listExpenses, getExpense, createExpense, updateExpense, deleteExpense };

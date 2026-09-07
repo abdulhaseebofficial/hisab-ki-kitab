@@ -1,23 +1,32 @@
 import Input from '../../../shared/components/ui/Input';
+import useT from '../../../shared/i18n/I18nProvider';
 
-/** Optional. It only exists to make the AI advice sound like it knows you. */
+/**
+ * Optional. It only exists to make the AI advice sound like it knows you.
+ *
+ * Only a student is asked this - see stepsFor() in OnboardingPage. A household
+ * has no university and no hostel block, and asking anyway is how a wizard
+ * tells somebody it has not understood who they are.
+ */
 export default function PlaceStep({ form, onChange }) {
+  const { t } = useT();
+
   return (
     <>
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        Optional, but it makes the AI advice sound less like a robot and more like a senior from your hostel.
+        {t('onboarding.placeIntro')}
       </p>
 
       <Input
-        label="University or college"
-        placeholder="e.g. University of the Punjab"
+        label={t('onboarding.university')}
+        placeholder={t('onboarding.universityPlaceholder')}
         value={form.university}
         onChange={(event) => onChange({ university: event.target.value })}
       />
 
       <Input
-        label="Hostel name"
-        placeholder="e.g. Hostel Block C"
+        label={t('settings.hostelName')}
+        placeholder={t('onboarding.hostelPlaceholder')}
         value={form.hostelName}
         onChange={(event) => onChange({ hostelName: event.target.value })}
       />

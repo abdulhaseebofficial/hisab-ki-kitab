@@ -23,8 +23,16 @@ const { modeOf } = require('../../shared/categories');
 
 const RECENT_EXPENSE_COUNT = 8;
 
-/** How far ahead "due soon" looks on the dashboard. */
-const BILL_HORIZON_DAYS = 14;
+/**
+ * How far ahead "due soon" looks on the dashboard.
+ *
+ * A little over a month, not a fortnight. Household bills are monthly, so a
+ * two-week window showed nothing at all for most of the month - the card was
+ * empty precisely when somebody wanted to know what was still coming. Looking
+ * 35 days ahead means the month's committed costs are always visible, which is
+ * the question the card exists to answer.
+ */
+const BILL_HORIZON_DAYS = 35;
 
 const periodFrom = (query = {}) => {
   const now = currentPeriod();

@@ -18,6 +18,21 @@ export default function MoneyStep({ form, onChange }) {
           : 'onboarding.incomeQuestionStudent')}
       </p>
 
+      {/*
+        Currency first, then the amount. The other way round, somebody typed a
+        figure against one symbol and watched it change meaning underneath them
+        when they corrected the currency - and every number after this point
+        (the quick amounts below, the goal targets on the next step) is rendered
+        in whatever is chosen here.
+      */}
+      <Select
+        label={t('onboarding.currency')}
+        options={CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol}  ${c.label}` }))}
+        value={form.currency}
+        onChange={(event) => onChange({ currency: event.target.value })}
+        hint={t('onboarding.currencyFirst')}
+      />
+
       <Input
         label={t(form.financeMode === 'householder' ? 'settings.monthlyHouseholdIncome' : 'settings.monthlyPocketMoney')}
         type="number"
@@ -28,13 +43,6 @@ export default function MoneyStep({ form, onChange }) {
         value={form.monthlyIncome}
         onChange={(event) => onChange({ monthlyIncome: event.target.value })}
         hint={t('settings.incomeHint')}
-      />
-
-      <Select
-        label={t('onboarding.currency')}
-        options={CURRENCIES.map((c) => ({ value: c.code, label: `${c.symbol}  ${c.label}` }))}
-        value={form.currency}
-        onChange={(event) => onChange({ currency: event.target.value })}
       />
 
       <div className="flex flex-wrap gap-1.5">

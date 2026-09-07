@@ -159,7 +159,7 @@ describe('when the data will not support a figure', () => {
 
   it('says plainly when nothing is due rather than showing an empty card', () => {
     show(HouseholderDashboard, 'en', { upcomingBills: [] });
-    expect(screen.getAllByText('Nothing due in the next two weeks').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Nothing due in the coming weeks').length).toBeGreaterThan(0);
   });
 
   it('survives a month with no spending at all', () => {

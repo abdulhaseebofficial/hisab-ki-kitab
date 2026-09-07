@@ -34,6 +34,17 @@ const expenseValidators = {
   ],
 
   byId: [idParam('id')],
+
+  /**
+   * A bill is rarely the same amount twice, so what was actually paid may be
+   * given. Both fields are optional: ticking the box with nothing else says
+   * "the usual amount, today".
+   */
+  markPaid: [
+    idParam('id'),
+    body('amount').optional().isFloat({ gt: 0 }).withMessage('Amount must be more than zero').toFloat(),
+    body('paidOn').optional().isISO8601().toDate(),
+  ],
 };
 
 /* ------------------------------- income ------------------------------ */

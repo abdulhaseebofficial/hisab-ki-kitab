@@ -240,7 +240,8 @@ describe('DebtWidget', () => {
     );
 
     expect(screen.getByText(/in your favour/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /open udhaar/i })).toHaveAttribute('href', '/debts');
+    // English reads 'Loans'; Roman Urdu keeps 'Udhaar', which is the word.
+    expect(screen.getByRole('link', { name: /open loans/i })).toHaveAttribute('href', '/debts');
   });
 
   it('lists at most three upcoming records so the dashboard stays readable', () => {

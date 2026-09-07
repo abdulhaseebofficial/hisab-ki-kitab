@@ -683,6 +683,63 @@ const { ok, section, heading, call, report, requireApi, bailIfRateLimited, curre
   r = await call('DELETE', `/goals/${goalId}`, undefined, token);
   ok('delete the test goal', r.status === 200, `-> ${r.status}`);
 
+  section('TICKING A RECURRING BILL OFF');
+  {
+    const billEmail = `bill${Date.now()}@example.com`;
+    let b = await call('POST', '/auth/register', {
+      acceptTerms: true, name: 'Bill QA', email: billEmail,
+      password: 'TestPass123!', confirmPassword: 'TestPass123!',
+    });
+    const billToken = b.data?.data?.accessToken;
+    await call('PUT', '/profile', { financeMode: 'householder', monthlyIncome: 90000 }, billToken);
+
+    b = await call('POST', '/expenses', {
+      amount: 8000, category: 'electricity_bill', description: 'Bijli bill',
+      date: new Date().toISOString(), isRecurring: true, recurringFrequency: 'monthly',
+    }, billToken);
+    const theBill = b.data?.data?.expense;
+    ok('a recurring household bill is created', b.status === 201, `-> ${b.status}`);
+
+    const before = await call('GET', '/dashboard/summary', undefined, billToken);
+    const spentBefore = before.data?.data?.totals?.spent;
+    ok('and it shows up as an upcoming bill',
+      (before.data?.data?.upcomingBills || []).some((x) => x._id === theBill._id),
+      `${(before.data?.data?.upcomingBills || []).length} upcoming`);
+
+    b = await call('POST', `/expenses/${theBill._id}/mark-paid`, {}, billToken);
+    ok('it can be marked paid', b.status === 201, `-> ${b.status}`);
+    ok('which records the spend', b.data?.data?.expense?.amount === 8000,
+      String(b.data?.data?.expense?.amount));
+    ok('and moves the due date on rather than leaving it due',
+      new Date(b.data?.data?.nextDueAt) > new Date(theBill.nextRunAt),
+      `${String(theBill.nextRunAt).slice(0, 10)} -> ${String(b.data?.data?.nextDueAt).slice(0, 10)}`);
+
+    const after = await call('GET', '/dashboard/summary', undefined, billToken);
+    ok('the month is 8000 heavier afterwards',
+      after.data?.data?.totals?.spent === spentBefore + 8000,
+      `${spentBefore} -> ${after.data?.data?.totals?.spent}`);
+    ok('and the bill is no longer listed as due',
+      !(after.data?.data?.upcomingBills || []).some((x) => x._id === theBill._id),
+      'gone from upcoming');
+
+    // A plain expense is not a bill, and saying so is better than silently
+    // doing nothing.
+    b = await call('POST', '/expenses', { amount: 50, category: 'groceries', date: new Date().toISOString() }, billToken);
+    const plain = b.data?.data?.expense;
+    b = await call('POST', `/expenses/${plain._id}/mark-paid`, {}, billToken);
+    ok('a non-recurring expense cannot be marked paid', b.status === 400, `-> ${b.status}`);
+
+    // The bill belongs to the household. The student side must not reach it.
+    await call('PUT', '/profile', { financeMode: 'student' }, billToken);
+    b = await call('POST', `/expenses/${theBill._id}/mark-paid`, {}, billToken);
+    ok('and a household bill cannot be ticked off from student mode',
+      b.status === 404, `-> ${b.status}`);
+
+    await call('PUT', '/profile', { financeMode: 'householder' }, billToken);
+    b = await call('DELETE', '/profile', { password: 'TestPass123!' }, billToken);
+    ok('the bill test account is removed', b.status === 200, `-> ${b.status}`);
+  }
+
   report();
 })().catch((e) => {
   console.error('\nThe suite crashed:', e.message);

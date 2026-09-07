@@ -22,6 +22,18 @@ const expenseService = {
     return data.data.expense;
   },
 
+  /**
+   * Ticks a recurring bill off for this cycle.
+   *
+   * Records the expense and moves the template's due date on, in one call - so
+   * a bill cannot end up recorded but still sitting in "upcoming", or moved on
+   * without being recorded.
+   */
+  async markPaid(id, payload = {}) {
+    const { data } = await api.post(`/expenses/${id}/mark-paid`, payload);
+    return data.data; // { expense, nextDueAt }
+  },
+
   async remove(id) {
     const { data } = await api.delete(`/expenses/${id}`);
     return data.data.id;

@@ -1,3 +1,4 @@
+import useT from '../../../shared/i18n/I18nProvider';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Languages, PartyPopper, Target, Wallet } from 'lucide-react';
@@ -13,14 +14,28 @@ import MoneyStep from '../components/MoneyStep';
 import PlaceStep from '../components/PlaceStep';
 import GoalStep from '../components/GoalStep';
 
-const STEPS = [
+const ALL_STEPS = [
   // Mode and language come first: every later step is worded by them, and the
   // categories a person will use are decided here.
-  { key: 'setup', title: 'How you keep your books', icon: Languages, Component: SetupStep },
-  { key: 'income', title: 'Your monthly money', icon: Wallet, Component: MoneyStep },
-  { key: 'place', title: 'Where you study', icon: Check, Component: PlaceStep },
-  { key: 'goal', title: 'Your first goal', icon: Target, Component: GoalStep },
+  { key: 'setup', titleKey: 'onboarding.stepSetup', icon: Languages, Component: SetupStep },
+  { key: 'income', titleKey: 'onboarding.stepMoney', icon: Wallet, Component: MoneyStep },
+  { key: 'place', titleKey: 'onboarding.stepPlace', icon: Check, Component: PlaceStep },
+  { key: 'goal', titleKey: 'onboarding.stepGoal', icon: Target, Component: GoalStep },
 ];
+
+/**
+ * Which steps this person is actually asked.
+ *
+ * "Where you study" asks for a university and a hostel block. For anyone but a
+ * student those are two fields with no honest answer, and a wizard that asks
+ * them is a wizard that has not understood who it is talking to - so the step
+ * is not skippable for a householder, it simply is not there.
+ *
+ * The progress header counts what is left, so dropping a step shortens the
+ * wizard rather than leaving a gap in it.
+ */
+export const stepsFor = (financeMode) =>
+  financeMode === 'student' ? ALL_STEPS : ALL_STEPS.filter((item) => item.key !== 'place');
 
 /**
  * First-run wizard. Everything except the income figure is skippable.
@@ -31,10 +46,17 @@ const STEPS = [
  * halfway through has not half-created an account.
  */
 export default function Onboarding() {
+  const { t } = useT();
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(0);
+
+  // Recomputed as the mode changes, which it can on the first step. Clamped,
+  // because choosing householder on step 0 makes the list one shorter and an
+  // index that was valid a moment ago may not be.
+  const steps = stepsFor(form.financeMode);
+  const current = Math.min(step, steps.length - 1);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     financeMode: (user && user.financeMode) || 'student',
@@ -64,9 +86,13 @@ export default function Onboarding() {
   };
 
   const finish = async (skipGoal = false) => {
-    if (!form.monthlyIncome || Number(form.monthlyIncome) < 0) {
-      setStep(STEPS.findIndex((s) => s.key === 'income'));
-      return toast.error('Enter your monthly pocket money first');
+    if (form.financeMode !== 'shared_living' && (!form.monthlyIncome || Number(form.monthlyIncome) < 0)) {
+      setStep(steps.findIndex((s) => s.key === 'income'));
+      return toast.error(
+        t(form.financeMode === 'householder'
+          ? 'onboarding.enterIncomeHouseholder'
+          : 'onboarding.enterIncomeStudent')
+      );
     }
 
     setSaving(true);
@@ -80,7 +106,7 @@ export default function Onboarding() {
         hostelName: form.hostelName,
       };
 
-      if (!skipGoal && form.goalTitle && Number(form.goalTarget) > 0) {
+      if (form.financeMode !== 'shared_living' && !skipGoal && form.goalTitle && Number(form.goalTarget) > 0) {
         payload.goal = {
           title: form.goalTitle,
           targetAmount: Number(form.goalTarget),
@@ -90,7 +116,7 @@ export default function Onboarding() {
 
       const data = await onboardingApi.complete(payload);
       updateUser(data.user);
-      toast.success('All set. Welcome to Hisab Ki Kitab!');
+      toast.success(t('shared.setupComplete'));
       navigate('/dashboard', { replace: true });
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -101,44 +127,51 @@ export default function Onboarding() {
   };
 
   const goForward = () => {
-    if (STEPS[step].key === 'income' && !form.monthlyIncome) {
-      return toast.error('Enter your monthly pocket money to continue');
+    if (steps[current].key === 'income' && !form.monthlyIncome) {
+      return toast.error(
+        t(form.financeMode === 'householder'
+          ? 'onboarding.enterIncomeHouseholder'
+          : 'onboarding.enterIncomeStudent')
+      );
     }
-    setStep((current) => current + 1);
+    setStep(current + 1);
     return undefined;
   };
 
-  const CurrentStep = STEPS[step].Component;
-  const isLastStep = step === STEPS.length - 1;
+  const CurrentStep = steps[current].Component;
+  const isLastStep = current === steps.length - 1;
 
   return (
     <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-center px-5 py-10">
-      <WizardHeader steps={STEPS} step={step} />
+      <WizardHeader
+        steps={steps.map((item) => ({ ...item, title: t(item.titleKey) }))}
+        step={current}
+      />
 
       <div className="hw-card space-y-5 p-6">
         <CurrentStep form={form} onChange={set} />
       </div>
 
       <div className="mt-6 flex items-center gap-2">
-        {step > 0 && (
-          <Button variant="ghost" icon={ArrowLeft} onClick={() => setStep((current) => current - 1)}>
-            Back
+        {current > 0 && (
+          <Button variant="ghost" icon={ArrowLeft} onClick={() => setStep(current - 1)}>
+            {t('onboarding.back')}
           </Button>
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          {isLastStep ? (
+          {form.financeMode === 'shared_living' ? <Button disabled={saving} onClick={() => finish(true)}>{t('shared.finishSetup')}</Button> : isLastStep ? (
             <>
               <Button variant="ghost" onClick={() => finish(true)} disabled={saving}>
-                Skip for now
+                {t('onboarding.skip')}
               </Button>
               <Button icon={PartyPopper} loading={saving} onClick={() => finish(false)}>
-                Finish setup
+                {t('onboarding.finish')}
               </Button>
             </>
           ) : (
             <Button icon={ArrowRight} onClick={goForward}>
-              Continue
+            {t('common.continue')}
             </Button>
           )}
         </div>

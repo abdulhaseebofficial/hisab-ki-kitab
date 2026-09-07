@@ -26,13 +26,13 @@ export default function DebtWidget({ debts, currency = 'PKR' }) {
   if (payable === 0 && receivable === 0) {
     return (
       <Card>
-        <CardHeader title="Udhaar" icon={HandCoins} />
+        <CardHeader title={t('udhaar.title')} icon={HandCoins} />
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          Nothing borrowed, nothing lent.{' '}
+          {t('udhaar.nothingEither')}{' '}
           <Link to="/debts" className="font-semibold text-brand-600 hover:underline dark:text-brand-400">
-            Add a record
+            {t('udhaar.addARecord')}
           </Link>{' '}
-          when that changes.
+          {t('udhaar.whenThatChanges')}
         </p>
       </Card>
     );
@@ -41,11 +41,11 @@ export default function DebtWidget({ debts, currency = 'PKR' }) {
   return (
     <Card>
       <CardHeader
-        title="Udhaar"
+        title={t('udhaar.title')}
         subtitle={
           overdueCount > 0
-            ? `${overdueCount} record(s) past due`
-            : 'Money borrowed and lent'
+            ? t('udhaar.summary.overdueCount', { count: overdueCount })
+            : t('udhaar.borrowedAndLent')
         }
         icon={HandCoins}
       />
@@ -104,7 +104,7 @@ export default function DebtWidget({ debts, currency = 'PKR' }) {
         to="/debts"
         className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline dark:text-brand-400"
       >
-        Open Udhaar
+        {t('udhaar.openPage')}
         <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
       </Link>
     </Card>

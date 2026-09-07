@@ -516,13 +516,31 @@ const fallbackChat = ({ user, snapshot, message }) => {
   return { reply: lines.join('\n') };
 };
 
+/**
+ * The tip of the day when there is no API key - which is most of the time, so
+ * this is what people actually read.
+ *
+ * Worded per mode. The advice a student needs and the advice a household needs
+ * are different advice, not the same sentence with the nouns swapped: a student
+ * is deciding whether to eat out tonight, a household is deciding whether this
+ * month's bills leave room for anything else. Telling a person paying an
+ * electricity bill to watch their chai spending is how an app announces it has
+ * not understood who is using it.
+ *
+ * Every figure comes from the person's own month. Nothing here is generic.
+ */
 const fallbackTip = ({ user, snapshot }) => {
   const cur = user.currency;
+  const household = modeOf(user) === 'householder';
   const { breakdown = [], remaining = 0, daysLeftInMonth = 1 } = snapshot;
 
+  // Nothing logged yet: the only useful advice is to start logging, and even
+  // that is worth saying in the reader's own terms.
   if (!breakdown.length) {
     return {
-      tip: 'Log every expense for the next three days, even the chai at the canteen. You cannot cut what you cannot see.',
+      tip: household
+        ? 'Write down every household expense for the next three days - the bijli bill and the small bazaar trips both. You cannot cut what you cannot see.'
+        : 'Log every expense for the next three days, even the chai at the canteen. You cannot cut what you cannot see.',
     };
   }
 
@@ -532,13 +550,18 @@ const fallbackTip = ({ user, snapshot }) => {
   // negative number, which is not advice. Say the honest thing instead.
   if (remaining <= 0) {
     return {
-      tip: `You are ${money(cur, Math.abs(remaining))} past your income this month, with ${top.category} the biggest slice at ${money(cur, top.amount)}. Treat the next ${daysLeftInMonth} days as a spend-nothing stretch and start next month with a limit on ${top.category}.`,
+      tip: household
+        ? `The household is ${money(cur, Math.abs(remaining))} past its income this month, and ${top.category} is the biggest share at ${money(cur, top.amount)}. Hold everything except the fixed bills for the next ${daysLeftInMonth} days, and put a limit on ${top.category} before next month starts.`
+        : `You are ${money(cur, Math.abs(remaining))} past your income this month, with ${top.category} the biggest slice at ${money(cur, top.amount)}. Treat the next ${daysLeftInMonth} days as a spend-nothing stretch and start next month with a limit on ${top.category}.`,
     };
   }
 
   const perDay = daysLeftInMonth > 0 ? remaining / daysLeftInMonth : remaining;
+
   return {
-    tip: `${top.category} is your biggest cost at ${money(cur, top.amount)}. With ${daysLeftInMonth} days left, keep it under ${money(cur, perDay)} a day and you will finish the month in the green.`,
+    tip: household
+      ? `${top.category} is the household's biggest cost at ${money(cur, top.amount)}. There are ${daysLeftInMonth} days left and ${money(cur, remaining)} to cover them - about ${money(cur, perDay)} a day once the bills are set aside.`
+      : `${top.category} is your biggest cost at ${money(cur, top.amount)}. With ${daysLeftInMonth} days left, keep it under ${money(cur, perDay)} a day and you will finish the month in the green.`,
   };
 };
 

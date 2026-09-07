@@ -64,10 +64,18 @@ describe('MoneyStep', () => {
 
 describe('MoneyStep: the order of the two money fields', () => {
   /*
-   * Monthly income comes first and currency second, on purpose. The income is
-   * the figure everything else in the app is sized against, and the currency is
-   * a setting attached to it - asking for the unit before the amount makes a
-   * student answer a question about a number they have not been asked for yet.
+   * Currency first, income second.
+   *
+   * This is the reverse of what these tests used to assert, and the reversal is
+   * deliberate. The old reasoning was that income is the figure everything else
+   * is sized against, so it should be asked for first. In practice that put a
+   * currency symbol on the field BEFORE the person had said which currency they
+   * meant: they typed a figure against "Rs", then corrected the currency below
+   * it, and the number they had already entered silently changed meaning.
+   *
+   * The unit has to be settled before the amount, because every figure after
+   * this point - the quick-amount buttons here, the goal targets on the next
+   * step - is rendered in it.
    *
    * These read the rendered DOM rather than the source, so they hold whichever
    * way the markup is written.
@@ -75,15 +83,15 @@ describe('MoneyStep: the order of the two money fields', () => {
   const fieldOrder = (container) =>
     Array.from(container.querySelectorAll('input, select')).map((el) => el.tagName);
 
-  it('puts monthly income before currency on screen', () => {
+  it('puts currency before monthly income on screen', () => {
     const { container } = render(<MoneyStep form={form} onChange={() => {}} />);
 
     const income = screen.getByLabelText(/monthly pocket money/i);
     const currency = screen.getByLabelText(/currency/i);
 
-    // DOCUMENT_POSITION_FOLLOWING: currency comes after income in the document.
-    expect(income.compareDocumentPosition(currency) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(fieldOrder(container)[0]).toBe('INPUT');
+    // DOCUMENT_POSITION_FOLLOWING: income comes after currency in the document.
+    expect(currency.compareDocumentPosition(income) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(fieldOrder(container)[0]).toBe('SELECT');
   });
 
   it('gives them the same order for the keyboard', async () => {
@@ -91,10 +99,10 @@ describe('MoneyStep: the order of the two money fields', () => {
     const income = screen.getByLabelText(/monthly pocket money/i);
     const currency = screen.getByLabelText(/currency/i);
 
-    income.focus();
-    expect(document.activeElement).toBe(income);
-    await userEvent.tab();
+    currency.focus();
     expect(document.activeElement).toBe(currency);
+    await userEvent.tab();
+    expect(document.activeElement).toBe(income);
   });
 
   it('neither field carries a tabIndex that would reorder them', () => {

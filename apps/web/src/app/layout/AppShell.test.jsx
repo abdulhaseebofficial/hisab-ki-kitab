@@ -36,7 +36,7 @@ describe('the desktop rail', () => {
 
   it('still lists every screen', () => {
     withRouter(<Sidebar open={false} onClose={() => {}} />);
-    for (const label of ['Dashboard', 'Expenses', 'Income', 'Goals', 'Udhaar', 'Budget', 'AI Advisor', 'Reports', 'Settings']) {
+    for (const label of ['Dashboard', 'Expenses', 'Income', 'Goals', 'Loans', 'Budget', 'AI Advisor', 'Reports', 'Settings']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
   });
