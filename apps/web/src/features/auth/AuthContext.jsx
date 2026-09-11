@@ -1,7 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import authService from './api/authApi';
-import { setSessionExpiredHandler, getErrorMessage } from '../../shared/api/client';
+import { setSessionExpiredHandler, getErrorMessage, bumpSessionEpoch } from '../../shared/api/client';
 
 const AuthContext = createContext(null);
 
@@ -24,6 +24,10 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // A page can receive a login click while the initial /me -> /refresh
+  // restoration is still in flight. Its late 401 must not clear the newly
+  // authenticated user.
+  const sessionVersion = useRef(0);
 
   const clearSession = useCallback(() => {
     setUser(null);
@@ -41,22 +45,23 @@ export function AuthProvider({ children }) {
     let cancelled = false;
 
     const restore = async () => {
+      const version = sessionVersion.current;
       try {
         // The access cookie is sent automatically; no token in memory is the
         // normal state on a fresh load, not a signed-out one.
         const me = await authService.me();
-        if (!cancelled) setUser(me);
+        if (!cancelled && version === sessionVersion.current) setUser(me);
       } catch {
         try {
           // The access cookie has expired. The refresh cookie outlives it by a
           // long way, and this is exactly what it is for.
           const refreshed = await authService.refresh();
-          if (!cancelled) setUser(refreshed);
+          if (!cancelled && version === sessionVersion.current) setUser(refreshed);
         } catch {
-          if (!cancelled) setUser(null);
+          if (!cancelled && version === sessionVersion.current) setUser(null);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && version === sessionVersion.current) setLoading(false);
       }
     };
 
@@ -67,15 +72,21 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (credentials) => {
+    sessionVersion.current += 1;
+    bumpSessionEpoch();
     const loggedIn = await authService.login(credentials);
     setUser(loggedIn);
+    setLoading(false);
     toast.success(`Welcome back, ${loggedIn.name.split(' ')[0]}!`);
     return loggedIn;
   }, []);
 
   const register = useCallback(async (payload) => {
+    sessionVersion.current += 1;
+    bumpSessionEpoch();
     const created = await authService.register(payload);
     setUser(created);
+    setLoading(false);
     toast.success('Account created. Let us set things up.');
     return created;
   }, []);
@@ -93,6 +104,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
+    sessionVersion.current += 1;
+    bumpSessionEpoch();
     await authService.logout();
     setUser(null);
     toast.success('Logged out');

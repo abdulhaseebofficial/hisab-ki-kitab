@@ -10,7 +10,7 @@ export default defineConfig({
     // httpOnly refresh cookie works without any CORS configuration.
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.VITE_API_PROXY_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
     },
@@ -22,6 +22,16 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.js'],
     include: ['src/**/*.test.jsx', 'src/**/*.test.js'],
     globals: true,
+  },
+
+  // The workspace contract is CommonJS while the web app is ESM. Prebundle it
+  // for the dev server too; otherwise direct browser loads see no default
+  // export even though Vitest and the production Rollup build interop it.
+  optimizeDeps: {
+    include: [
+      '@hisabkikitab/contracts/catalogue',
+      '@hisabkikitab/contracts/validation',
+    ],
   },
 
   build: {

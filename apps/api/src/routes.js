@@ -8,6 +8,13 @@
  */
 
 const registerRoutes = (app) => {
+  app.use('/api/shared-living', require('./modules/sharedLiving/sharedLiving.routes'));
+  const { protect } = require('./modules/auth/auth.middleware');
+  const personalPaths = ['/api/expenses','/api/income','/api/goals','/api/debts','/api/budget','/api/dashboard','/api/ai','/api/reports'];
+  app.use(personalPaths, protect, (req, res, next) => {
+    if (req.user.financeMode === 'shared_living') return res.status(403).json({success:false,message:'shared.personalMode'});
+    return next();
+  });
   app.use('/api/auth', require('./modules/auth/auth.routes'));
   app.use('/api/profile', require('./modules/users/users.routes'));
   app.use('/api/expenses', require('./modules/expenses/expenses.routes'));

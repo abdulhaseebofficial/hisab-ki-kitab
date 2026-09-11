@@ -203,6 +203,7 @@ const checkBillsDue = async (user) => {
 
 /** Run every check for one user. Called on dashboard load and by the cron job. */
 const runChecksForUser = async (user) => {
+  if (modeOf(user) === 'shared_living') return [];
   const results = await Promise.allSettled([
     checkOverspending(user),
     checkGoalDeadlines(user),

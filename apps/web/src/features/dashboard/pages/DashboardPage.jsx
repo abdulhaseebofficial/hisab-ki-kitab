@@ -10,6 +10,7 @@ import useAsync from '../../../shared/hooks/useAsync';
 import useT from '../../../shared/i18n/I18nProvider';
 import { useAuth } from '../../auth';
 import dashboardService from '../api/dashboardApi';
+import { SharedLivingPage } from '../../sharedLiving';
 import StudentDashboard from '../components/StudentDashboard';
 import HouseholderDashboard from '../components/HouseholderDashboard';
 
@@ -28,6 +29,11 @@ import HouseholderDashboard from '../components/HouseholderDashboard';
  * figures and the layout change together, without a reload.
  */
 export default function Dashboard() {
+  const { user } = useAuth();
+  return user?.financeMode === 'shared_living' ? <SharedLivingPage key={user._id} userId={user._id} /> : <PersonalDashboard />;
+}
+
+function PersonalDashboard() {
   const { user, currency } = useAuth();
   const { t } = useT();
   const navigate = useNavigate();

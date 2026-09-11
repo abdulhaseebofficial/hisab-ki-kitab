@@ -52,11 +52,6 @@ export default function Onboarding() {
 
   const [step, setStep] = useState(0);
 
-  // Recomputed as the mode changes, which it can on the first step. Clamped,
-  // because choosing householder on step 0 makes the list one shorter and an
-  // index that was valid a moment ago may not be.
-  const steps = stepsFor(form.financeMode);
-  const current = Math.min(step, steps.length - 1);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     financeMode: (user && user.financeMode) || 'student',
@@ -69,6 +64,12 @@ export default function Onboarding() {
     goalTarget: '',
     goalIcon: GOAL_ICONS[0],
   });
+
+  // Recomputed as the mode changes, which it can on the first step. Clamped,
+  // because choosing householder on step 0 makes the list one shorter and an
+  // index that was valid a moment ago may not be.
+  const steps = stepsFor(form.financeMode);
+  const current = Math.min(step, steps.length - 1);
 
   const set = (patch) => {
     setForm((current) => ({ ...current, ...patch }));

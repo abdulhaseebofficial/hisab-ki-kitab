@@ -178,14 +178,14 @@ export default function Settings() {
 
       <AppearanceCard theme={theme} onChange={setTheme} />
 
-      <CategoriesCard
+      {user?.financeMode !== 'shared_living' && <CategoriesCard
         categories={categories}
         custom={custom}
         newCategory={newCategory}
         onNewCategoryChange={setNewCategory}
         onAdd={addCategory}
         onRemove={removeCategory}
-      />
+      />}
 
       <SecurityCard
         user={user}

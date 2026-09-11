@@ -22,11 +22,17 @@ const BASE_URL = import.meta.env.VITE_API_URL || '/api';
  * credential, and an explicit credential should beat an ambient one.
  */
 let accessToken = null;
+let sessionEpoch = 0;
 
 export const getAccessToken = () => accessToken;
 
 export const setAccessToken = (token) => {
   accessToken = token || null;
+};
+
+/** Invalidate in-flight restore/refresh requests when an explicit auth action starts. */
+export const bumpSessionEpoch = () => {
+  sessionEpoch += 1;
 };
 
 /* ------------------------------- client ----------------------------- */
@@ -39,6 +45,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  if (config._sessionEpoch === undefined) config._sessionEpoch = sessionEpoch;
   // No header on a fresh page load, and that is correct: the httpOnly cookie
   // carries the session until the first response hands a token back.
   if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
@@ -93,7 +100,7 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         setAccessToken(null);
-        onSessionExpired();
+        if (original._sessionEpoch === sessionEpoch) onSessionExpired();
         return Promise.reject(error);
       }
     }

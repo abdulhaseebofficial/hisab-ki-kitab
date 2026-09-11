@@ -13,6 +13,7 @@ import useT from '../../shared/i18n/I18nProvider';
 export default function ProtectedRoute({ requireOnboarding = true }) {
   const { isAuthenticated, loading, needsOnboarding } = useAuth();
   const location = useLocation();
+  const { t } = useT();
 
   if (loading) return <PageSpinner label={t('app.gettingReady')} />;
 

@@ -5,6 +5,7 @@ import { cn } from '../../../shared/utils/format';
 const MODES = [
   { key: 'student', icon: GraduationCap },
   { key: 'householder', icon: Home },
+  { key: 'shared_living', icon: Home },
 ];
 
 // Named in themselves, not through t(): somebody choosing a language has to be

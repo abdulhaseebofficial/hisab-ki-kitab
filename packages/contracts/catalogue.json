@@ -1,97 +1,373 @@
 {
   "_comment": "Every category the app offers, in both modes and both languages. `id` is what the database stores and an API sends; `en` and `roman_ur` are only ever read by a human. Changing language changes the label and never the id, which is the whole point: a person's spending history cannot be reorganised by a settings toggle.",
-
   "_studentIdComment": "Student ids are the strings this app has stored since it began - 'Mess/Food', not 'food'. They read like English labels, and a clean-slate design would use slugs. Rewriting them would mean rewriting the category on every expense and budget row that already exists, and would buy nothing a person can see: an id that happens to be English is still an id, and it does not change when the language does. The householder ids added here are slugs, because nothing has been stored under them yet.",
-
   "expense": {
     "student": [
-      { "id": "Mess/Food",          "en": "Food",                "roman_ur": "Khana" },
-      { "id": "Rent/Hostel Fee",    "en": "Hostel / Rent",       "roman_ur": "Hostel / Kiraya" },
-      { "id": "Books & Stationery", "en": "Education",           "roman_ur": "Taleem" },
-      { "id": "Travel",             "en": "Transport",           "roman_ur": "Safar" },
-      { "id": "Mobile/Internet",    "en": "Mobile / Internet",   "roman_ur": "Mobile / Internet" },
-      { "id": "Entertainment",      "en": "Entertainment",       "roman_ur": "Tafreeh" },
-      { "id": "Health",             "en": "Health",              "roman_ur": "Sehat" },
-      { "id": "Personal Care",      "en": "Personal Care",       "roman_ur": "Zaati Zaroorat" },
-      { "id": "student_shopping",   "en": "Shopping",            "roman_ur": "Kharidari" },
-      { "id": "student_family",     "en": "Family",              "roman_ur": "Ghar Walay" },
-      { "id": "student_savings",    "en": "Savings",             "roman_ur": "Bachat" },
-      { "id": "student_emergency",  "en": "Emergency",           "roman_ur": "Emergency" },
-      { "id": "Misc",               "en": "Other",               "roman_ur": "Deegar", "requiresNote": true }
+      {
+        "id": "Mess/Food",
+        "en": "Food",
+        "roman_ur": "Khana"
+      },
+      {
+        "id": "Rent/Hostel Fee",
+        "en": "Hostel / Rent",
+        "roman_ur": "Hostel / Kiraya"
+      },
+      {
+        "id": "Books & Stationery",
+        "en": "Education",
+        "roman_ur": "Taleem"
+      },
+      {
+        "id": "Travel",
+        "en": "Transport",
+        "roman_ur": "Safar"
+      },
+      {
+        "id": "Mobile/Internet",
+        "en": "Mobile / Internet",
+        "roman_ur": "Mobile / Internet"
+      },
+      {
+        "id": "Entertainment",
+        "en": "Entertainment",
+        "roman_ur": "Tafreeh"
+      },
+      {
+        "id": "Health",
+        "en": "Health",
+        "roman_ur": "Sehat"
+      },
+      {
+        "id": "Personal Care",
+        "en": "Personal Care",
+        "roman_ur": "Zaati Zaroorat"
+      },
+      {
+        "id": "student_shopping",
+        "en": "Shopping",
+        "roman_ur": "Kharidari"
+      },
+      {
+        "id": "student_family",
+        "en": "Family",
+        "roman_ur": "Ghar Walay"
+      },
+      {
+        "id": "student_savings",
+        "en": "Savings",
+        "roman_ur": "Bachat"
+      },
+      {
+        "id": "student_emergency",
+        "en": "Emergency",
+        "roman_ur": "Emergency"
+      },
+      {
+        "id": "Misc",
+        "en": "Other",
+        "roman_ur": "Deegar",
+        "requiresNote": true
+      }
     ],
-
     "householder": [
-      { "id": "groceries",         "en": "Groceries / Ration",     "roman_ur": "Ghar Ka Rashan" },
-      { "id": "house_rent",        "en": "House Rent",             "roman_ur": "Ghar Ka Kiraya" },
-      { "id": "electricity_bill",  "en": "Electricity Bill",       "roman_ur": "Bijli Ka Bill" },
-      { "id": "gas_bill",          "en": "Gas Bill",               "roman_ur": "Gas Ka Bill" },
-      { "id": "water_bill",        "en": "Water Bill",             "roman_ur": "Pani Ka Bill" },
-      { "id": "internet",          "en": "Internet",               "roman_ur": "Internet" },
-      { "id": "mobile",            "en": "Mobile",                 "roman_ur": "Mobile" },
-      { "id": "maintenance",       "en": "Maintenance & Repairs",  "roman_ur": "Marammat" },
-      { "id": "domestic_help",     "en": "Domestic Help",          "roman_ur": "Ghar Ka Kaam" },
-      { "id": "transport_fuel",    "en": "Transport / Fuel",       "roman_ur": "Safar / Petrol" },
-      { "id": "school_fees",       "en": "Education / School Fees","roman_ur": "Taleem / School Fees" },
-      { "id": "healthcare",        "en": "Healthcare / Medicines", "roman_ur": "Sehat / Dawai" },
-      { "id": "children",          "en": "Children",               "roman_ur": "Bachay" },
-      { "id": "family_support",    "en": "Family Support",         "roman_ur": "Ghar Walon Ki Madad" },
-      { "id": "clothing",          "en": "Clothing",               "roman_ur": "Kapray" },
-      { "id": "personal_care",     "en": "Personal Care",          "roman_ur": "Zaati Zaroorat" },
-      { "id": "dining_out",        "en": "Dining Out",             "roman_ur": "Bahar Khana" },
-      { "id": "entertainment",     "en": "Entertainment",          "roman_ur": "Tafreeh" },
-      { "id": "insurance",         "en": "Insurance",              "roman_ur": "Insurance" },
-      { "id": "loan_installment",  "en": "Loan Installment",       "roman_ur": "Qarz Ki Qist" },
-      { "id": "charity_zakat",     "en": "Charity / Zakat",        "roman_ur": "Sadqa / Zakat" },
-      { "id": "savings",           "en": "Savings / Investment",   "roman_ur": "Bachat / Sarmayakari" },
-      { "id": "emergency",         "en": "Emergency",              "roman_ur": "Emergency" },
-      { "id": "guests_events",     "en": "Guests & Events",        "roman_ur": "Mehman / Taqreeb" },
-      { "id": "other",             "en": "Other",                  "roman_ur": "Deegar", "requiresNote": true }
-    ]
+      {
+        "id": "groceries",
+        "en": "Groceries / Ration",
+        "roman_ur": "Ghar Ka Rashan"
+      },
+      {
+        "id": "house_rent",
+        "en": "House Rent",
+        "roman_ur": "Ghar Ka Kiraya"
+      },
+      {
+        "id": "electricity_bill",
+        "en": "Electricity Bill",
+        "roman_ur": "Bijli Ka Bill"
+      },
+      {
+        "id": "gas_bill",
+        "en": "Gas Bill",
+        "roman_ur": "Gas Ka Bill"
+      },
+      {
+        "id": "water_bill",
+        "en": "Water Bill",
+        "roman_ur": "Pani Ka Bill"
+      },
+      {
+        "id": "internet",
+        "en": "Internet",
+        "roman_ur": "Internet"
+      },
+      {
+        "id": "mobile",
+        "en": "Mobile",
+        "roman_ur": "Mobile"
+      },
+      {
+        "id": "maintenance",
+        "en": "Maintenance & Repairs",
+        "roman_ur": "Marammat"
+      },
+      {
+        "id": "domestic_help",
+        "en": "Domestic Help",
+        "roman_ur": "Ghar Ka Kaam"
+      },
+      {
+        "id": "transport_fuel",
+        "en": "Transport / Fuel",
+        "roman_ur": "Safar / Petrol"
+      },
+      {
+        "id": "school_fees",
+        "en": "Education / School Fees",
+        "roman_ur": "Taleem / School Fees"
+      },
+      {
+        "id": "healthcare",
+        "en": "Healthcare / Medicines",
+        "roman_ur": "Sehat / Dawai"
+      },
+      {
+        "id": "children",
+        "en": "Children",
+        "roman_ur": "Bachay"
+      },
+      {
+        "id": "family_support",
+        "en": "Family Support",
+        "roman_ur": "Ghar Walon Ki Madad"
+      },
+      {
+        "id": "clothing",
+        "en": "Clothing",
+        "roman_ur": "Kapray"
+      },
+      {
+        "id": "personal_care",
+        "en": "Personal Care",
+        "roman_ur": "Zaati Zaroorat"
+      },
+      {
+        "id": "dining_out",
+        "en": "Dining Out",
+        "roman_ur": "Bahar Khana"
+      },
+      {
+        "id": "entertainment",
+        "en": "Entertainment",
+        "roman_ur": "Tafreeh"
+      },
+      {
+        "id": "insurance",
+        "en": "Insurance",
+        "roman_ur": "Insurance"
+      },
+      {
+        "id": "loan_installment",
+        "en": "Loan Installment",
+        "roman_ur": "Qarz Ki Qist"
+      },
+      {
+        "id": "charity_zakat",
+        "en": "Charity / Zakat",
+        "roman_ur": "Sadqa / Zakat"
+      },
+      {
+        "id": "savings",
+        "en": "Savings / Investment",
+        "roman_ur": "Bachat / Sarmayakari"
+      },
+      {
+        "id": "emergency",
+        "en": "Emergency",
+        "roman_ur": "Emergency"
+      },
+      {
+        "id": "guests_events",
+        "en": "Guests & Events",
+        "roman_ur": "Mehman / Taqreeb"
+      },
+      {
+        "id": "other",
+        "en": "Other",
+        "roman_ur": "Deegar",
+        "requiresNote": true
+      }
+    ],
+    "shared_living": []
   },
-
   "income": {
     "student": [
-      { "id": "Pocket Money",  "en": "Pocket Money",   "roman_ur": "Jeb Kharch" },
-      { "id": "Part-time Job", "en": "Part-time Job",  "roman_ur": "Part-time Kaam" },
-      { "id": "Scholarship",   "en": "Scholarship",    "roman_ur": "Wazifa" },
-      { "id": "Freelance",     "en": "Freelance",      "roman_ur": "Freelance" },
-      { "id": "Gift",          "en": "Gift",           "roman_ur": "Tohfa" },
-      { "id": "Other",         "en": "Other",          "roman_ur": "Deegar", "requiresNote": true }
+      {
+        "id": "Pocket Money",
+        "en": "Pocket Money",
+        "roman_ur": "Jeb Kharch"
+      },
+      {
+        "id": "Part-time Job",
+        "en": "Part-time Job",
+        "roman_ur": "Part-time Kaam"
+      },
+      {
+        "id": "Scholarship",
+        "en": "Scholarship",
+        "roman_ur": "Wazifa"
+      },
+      {
+        "id": "Freelance",
+        "en": "Freelance",
+        "roman_ur": "Freelance"
+      },
+      {
+        "id": "Gift",
+        "en": "Gift",
+        "roman_ur": "Tohfa"
+      },
+      {
+        "id": "Other",
+        "en": "Other",
+        "roman_ur": "Deegar",
+        "requiresNote": true
+      }
     ],
-
     "householder": [
-      { "id": "salary",              "en": "Salary",              "roman_ur": "Tankhwah" },
-      { "id": "business_income",     "en": "Business Income",     "roman_ur": "Karobar Ki Aamdani" },
-      { "id": "freelance_income",    "en": "Freelance Income",    "roman_ur": "Freelance Aamdani" },
-      { "id": "rental_income",       "en": "Rental Income",       "roman_ur": "Kiraye Ki Aamdani" },
-      { "id": "pension",             "en": "Pension",             "roman_ur": "Pension" },
-      { "id": "investment_return",   "en": "Investment Return",   "roman_ur": "Sarmayakari Ka Munafa" },
-      { "id": "remittance",          "en": "Remittance",          "roman_ur": "Bahar Se Bheji Raqam" },
-      { "id": "family_contribution", "en": "Family Contribution", "roman_ur": "Ghar Walon Ka Hissa" },
-      { "id": "bonus",               "en": "Bonus",               "roman_ur": "Bonus" },
-      { "id": "gift",                "en": "Gift",                "roman_ur": "Tohfa" },
-      { "id": "refund",              "en": "Refund",              "roman_ur": "Wapas Mili Raqam" },
-      { "id": "other_income",        "en": "Other Income",        "roman_ur": "Deegar Aamdani", "requiresNote": true }
-    ]
+      {
+        "id": "salary",
+        "en": "Salary",
+        "roman_ur": "Tankhwah"
+      },
+      {
+        "id": "business_income",
+        "en": "Business Income",
+        "roman_ur": "Karobar Ki Aamdani"
+      },
+      {
+        "id": "freelance_income",
+        "en": "Freelance Income",
+        "roman_ur": "Freelance Aamdani"
+      },
+      {
+        "id": "rental_income",
+        "en": "Rental Income",
+        "roman_ur": "Kiraye Ki Aamdani"
+      },
+      {
+        "id": "pension",
+        "en": "Pension",
+        "roman_ur": "Pension"
+      },
+      {
+        "id": "investment_return",
+        "en": "Investment Return",
+        "roman_ur": "Sarmayakari Ka Munafa"
+      },
+      {
+        "id": "remittance",
+        "en": "Remittance",
+        "roman_ur": "Bahar Se Bheji Raqam"
+      },
+      {
+        "id": "family_contribution",
+        "en": "Family Contribution",
+        "roman_ur": "Ghar Walon Ka Hissa"
+      },
+      {
+        "id": "bonus",
+        "en": "Bonus",
+        "roman_ur": "Bonus"
+      },
+      {
+        "id": "gift",
+        "en": "Gift",
+        "roman_ur": "Tohfa"
+      },
+      {
+        "id": "refund",
+        "en": "Refund",
+        "roman_ur": "Wapas Mili Raqam"
+      },
+      {
+        "id": "other_income",
+        "en": "Other Income",
+        "roman_ur": "Deegar Aamdani",
+        "requiresNote": true
+      }
+    ],
+    "shared_living": []
   },
-
   "_udhaarPurposeComment": "Shared by both modes: why money changed hands is the same question whether you live in a hostel or run a house.",
   "udhaarPurpose": [
-    { "id": "groceries",      "en": "Groceries / Ration", "roman_ur": "Ghar Ka Rashan" },
-    { "id": "rent",           "en": "Rent",               "roman_ur": "Kiraya" },
-    { "id": "utility_bill",   "en": "Utility Bill",       "roman_ur": "Bill" },
-    { "id": "education",      "en": "Education",          "roman_ur": "Taleem" },
-    { "id": "medical",        "en": "Medical",            "roman_ur": "Ilaaj" },
-    { "id": "transport",      "en": "Transport",          "roman_ur": "Safar" },
-    { "id": "business",       "en": "Business",           "roman_ur": "Karobar" },
-    { "id": "personal_need",  "en": "Personal Need",      "roman_ur": "Zaati Zaroorat" },
-    { "id": "emergency",      "en": "Emergency",          "roman_ur": "Emergency" },
-    { "id": "family_support", "en": "Family Support",     "roman_ur": "Ghar Walon Ki Madad" },
-    { "id": "shopping",       "en": "Shopping",           "roman_ur": "Kharidari" },
-    { "id": "loan",           "en": "Loan",               "roman_ur": "Qarz" },
-    { "id": "other",          "en": "Other",              "roman_ur": "Deegar", "requiresNote": true }
+    {
+      "id": "groceries",
+      "en": "Groceries / Ration",
+      "roman_ur": "Ghar Ka Rashan"
+    },
+    {
+      "id": "rent",
+      "en": "Rent",
+      "roman_ur": "Kiraya"
+    },
+    {
+      "id": "utility_bill",
+      "en": "Utility Bill",
+      "roman_ur": "Bill"
+    },
+    {
+      "id": "education",
+      "en": "Education",
+      "roman_ur": "Taleem"
+    },
+    {
+      "id": "medical",
+      "en": "Medical",
+      "roman_ur": "Ilaaj"
+    },
+    {
+      "id": "transport",
+      "en": "Transport",
+      "roman_ur": "Safar"
+    },
+    {
+      "id": "business",
+      "en": "Business",
+      "roman_ur": "Karobar"
+    },
+    {
+      "id": "personal_need",
+      "en": "Personal Need",
+      "roman_ur": "Zaati Zaroorat"
+    },
+    {
+      "id": "emergency",
+      "en": "Emergency",
+      "roman_ur": "Emergency"
+    },
+    {
+      "id": "family_support",
+      "en": "Family Support",
+      "roman_ur": "Ghar Walon Ki Madad"
+    },
+    {
+      "id": "shopping",
+      "en": "Shopping",
+      "roman_ur": "Kharidari"
+    },
+    {
+      "id": "loan",
+      "en": "Loan",
+      "roman_ur": "Qarz"
+    },
+    {
+      "id": "other",
+      "en": "Other",
+      "roman_ur": "Deegar",
+      "requiresNote": true
+    }
   ],
-
   "financeModes": [
     {
       "id": "student",
@@ -106,25 +382,66 @@
       "roman_ur": "Ghar Ka Hisab",
       "descriptionEn": "Manage household income, bills, groceries, family expenses and savings.",
       "descriptionRomanUr": "Ghar ki aamdani, bills, rashan, family ke kharchay aur bachat manage karein."
+    },
+    {
+      "id": "shared_living",
+      "en": "Shared Living",
+      "roman_ur": "Mushtarka Rehaish",
+      "descriptionEn": "Manage shared spaces, residents, food, bills and contributions.",
+      "descriptionRomanUr": "Mushtarka jagah, rehne walay, khana, bills aur jama raqam ka hisab."
     }
   ],
-
   "languages": [
-    { "id": "en",       "en": "English",     "roman_ur": "English" },
-    { "id": "roman_ur", "en": "Roman Urdu",  "roman_ur": "Roman Urdu" }
+    {
+      "id": "en",
+      "en": "English",
+      "roman_ur": "English"
+    },
+    {
+      "id": "roman_ur",
+      "en": "Roman Urdu",
+      "roman_ur": "Roman Urdu"
+    }
   ],
-
   "_udhaarComment": "kind and status are the values the database has always stored. The labels are what a person reads, and they are never stored anywhere.",
   "udhaarKind": [
-    { "id": "BORROWED", "en": "I Have to Pay",     "roman_ur": "Mujhe Paise Dene Hain" },
-    { "id": "LENT",     "en": "I Have to Receive", "roman_ur": "Mujhe Paise Lene Hain" }
+    {
+      "id": "BORROWED",
+      "en": "I Have to Pay",
+      "roman_ur": "Mujhe Paise Dene Hain"
+    },
+    {
+      "id": "LENT",
+      "en": "I Have to Receive",
+      "roman_ur": "Mujhe Paise Lene Hain"
+    }
   ],
-
   "udhaarStatus": [
-    { "id": "PENDING",        "en": "Active",         "roman_ur": "Jari" },
-    { "id": "PARTIALLY_PAID", "en": "Partially Paid", "roman_ur": "Kuch Raqam Ada Hui" },
-    { "id": "SETTLED",        "en": "Settled",        "roman_ur": "Hisab Clear" },
-    { "id": "CANCELLED",      "en": "Cancelled",      "roman_ur": "Mansookh" },
-    { "id": "OVERDUE",        "en": "Overdue",        "roman_ur": "Adaigi Mein Der", "derived": true }
+    {
+      "id": "PENDING",
+      "en": "Active",
+      "roman_ur": "Jari"
+    },
+    {
+      "id": "PARTIALLY_PAID",
+      "en": "Partially Paid",
+      "roman_ur": "Kuch Raqam Ada Hui"
+    },
+    {
+      "id": "SETTLED",
+      "en": "Settled",
+      "roman_ur": "Hisab Clear"
+    },
+    {
+      "id": "CANCELLED",
+      "en": "Cancelled",
+      "roman_ur": "Mansookh"
+    },
+    {
+      "id": "OVERDUE",
+      "en": "Overdue",
+      "roman_ur": "Adaigi Mein Der",
+      "derived": true
+    }
   ]
 }

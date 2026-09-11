@@ -6,6 +6,7 @@ import { cn } from '../../../shared/utils/format';
 const OPTIONS = [
   { key: 'student', icon: GraduationCap },
   { key: 'householder', icon: Home },
+  { key: 'shared_living', icon: Home },
 ];
 
 /**

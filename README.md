@@ -22,7 +22,10 @@ dhaba outside the gate that never closes.
 
 ## Features
 
-### Two ways to keep the books
+### Three ways to keep the books
+
+- **Shared Living mode** — shared food, bills, member contributions and balances
+  for a hostel room or flat. Choose it during setup or in Settings.
 - **Student mode** — pocket money, the mess bill, hostel fee, books, travel home
 - **Householder mode** — rent, electricity, gas, water, groceries, school fees,
   family support, installments
@@ -31,6 +34,20 @@ dhaba outside the gate that never closes.
   where it was left
 - Categories, the dashboard wording and the AI advisor's persona all follow the
   mode, so a householder is never advised to eat the mess food they paid for
+
+### Shared Living
+
+- Create a shared space or join one with an invite code; admins manage records
+  and viewers can read them.
+- Track residents, daily food expenses, bills and contributions by month.
+- Preview equal, selected-member, percentage, custom and weighted expense splits.
+- Keep remaining budget, cash on hand and outstanding member payments separate.
+- Attach bill receipts, review activity and close a month to prevent financial edits.
+- Available in English and Roman Urdu. Run `npm run test:shared` for calculation
+  and authenticated API/database checks; the database suite uses a temporary schema.
+- Apply migrations `0010_shared_living.sql`, `0011_shared_living_integrity.sql`
+  and `0012_shared_living_requests.sql`
+  with the existing migration command before using this mode on a deployed database.
 
 ### English and Roman Urdu
 - Every screen reads in either language, chosen at setup or in Settings
@@ -286,7 +303,8 @@ npm run check:boundaries   # the layering rules
 npm run check:dead         # files and exports nothing reaches
 npm run test:unit          # pure logic, no database, no server
 npm run test:migrations    # fresh-database and re-apply paths
-npm run test:e2e           # the full stack (needs `npm run dev` running)
+npm run test:e2e           # API/database journey (use scripts/e2e-environment.js)
+npm run test:browser       # Playwright browser journey (API and web must be running)
 npm run build              # production build
 ```
 

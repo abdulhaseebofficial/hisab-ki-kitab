@@ -78,7 +78,7 @@ const completeOnboarding = async (userId, body) => {
   });
 
   let createdGoal = null;
-  if (goal && goal.title && goal.targetAmount) {
+  if (financeMode !== 'shared_living' && goal && goal.title && goal.targetAmount) {
     createdGoal = await goals.create(userId, {
       title: goal.title,
       targetAmount: goal.targetAmount,
